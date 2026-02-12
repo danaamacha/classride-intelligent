@@ -1,0 +1,4 @@
+bus_id,capacity,start_lat,start_lng
+BUS_01,12,33.8938,35.5018
+BUS_02,10,33.8886,35.4955
+BUS_03,8,33.9050,35.4800
