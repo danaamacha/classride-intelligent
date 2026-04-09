@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  DRIVER
+  BUS_OWNER
+  SUPER_ADMIN
+}
+
+enum TripType {
+  MORNING
+  EVENING
+}
+
+enum TripStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum AuditAction {
+  LOGIN
+  FAILED_LOGIN
+  LOGOUT
+  PASSWORD_CHANGED
+  USER_CREATED
+  USER_SUSPENDED
+  USER_ACTIVATED
+  ROLE_CHANGED
+  ORG_CREATED
+  ORG_APPROVED
+  ORG_SUSPENDED
+  BUS_CREATED
+  BUS_UPDATED
+  BUS_DELETED
+  DRIVER_ASSIGNED_TO_BUS
+  DRIVER_REMOVED_FROM_BUS
+  STUDENT_ADDED_TO_ROUTE
+  STUDENT_REMOVED_FROM_ROUTE
+  JOIN_REQUEST_SUBMITTED
+  JOIN_REQUEST_APPROVED
+  JOIN_REQUEST_REJECTED
+  TRIP_CREATED
+  TRIP_STARTED
+  TRIP_COMPLETED
+  TRIP_CANCELLED
+  ATTENDANCE_MARKED
+  PAYMENT_CONFIRMED
+  PAYMENT_EDITED
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+model Organization {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  phone      String?
+  address    String?
+  logoUrl    String?
+  isActive   Boolean  @default(true)
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  users        User[]
+  buses        Bus[]
+  routes       Route[]
+  trips        Trip[]
+  joinRequests JoinRequest[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password       String
+  firstName      String
+  lastName       String
+  phone          String?
+  role           Role
+  isActive       Boolean  @default(true)
+  organizationId String?
+  homeAddress    String?
+  homeLat        Float?
+  homeLng        Float?
+  university     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  assignedBus    Bus?           @relation("DriverBus")
+  routeStudents  RouteStudent[]
+  tripStudents   TripStudent[]
+  joinRequests   JoinRequest[]
+  auditLogsBy    AuditLog[]     @relation("PerformedBy")
+  auditLogsFor   AuditLog[]     @relation("AuditUser")
+
+  @@index([organizationId])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Bus {
+  id             String   @id @default(uuid())
+  organizationId String
+  plateNumber    String   @unique
+  model          String?
+  capacity       Int
+  isActive       Boolean  @default(true)
+  driverId       String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  driver       User?        @relation("DriverBus", fields: [driverId], references: [id])
+  routes       Route[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("buses")
+}
+
+model Route {
+  id             String   @id @default(uuid())
+  organizationId String
+  busId          String
+  name           String
+  tripType       TripType
+  destination    String
+  destinationLat Float?
+  destinationLng Float?
+  departureTime  String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  bus          Bus             @relation(fields: [busId], references: [id])
+  students     RouteStudent[]
+  trips        Trip[]
+
+  @@index([organizationId])
+  @@index([busId])
+  @@index([isActive])
+  @@map("routes")
+}
+
+model RouteStudent {
+  id        String   @id @default(uuid())
+  routeId   String
+  studentId String
+  stopOrder Int
+  isActive  Boolean  @default(true)
+  addedAt   DateTime @default(now())
+
+  // Relations
+  route   Route @relation(fields: [routeId], references: [id])
+  student User  @relation(fields: [studentId], references: [id])
+
+  @@unique([routeId, studentId])
+  @@unique([routeId, stopOrder])
+  @@index([routeId])
+  @@index([studentId])
+  @@map("route_students")
+}
+
+model Trip {
+  id             String     @id @default(uuid())
+  organizationId String
+  routeId        String
+  tripType       TripType
+  status         TripStatus @default(SCHEDULED)
+  scheduledDate  DateTime
+  startedAt      DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  route        Route          @relation(fields: [routeId], references: [id])
+  students     TripStudent[]
+  auditLogs    AuditLog[]
+
+  @@index([organizationId])
+  @@index([routeId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@map("trips")
+}
+
+model TripStudent {
+  id            String           @id @default(uuid())
+  tripId        String
+  studentId     String
+  attendance    AttendanceStatus @default(PRESENT)
+  paymentStatus PaymentStatus    @default(PENDING)
+  amountDue     Decimal?         @db.Decimal(10, 2)
+  amountPaid    Decimal?         @db.Decimal(10, 2)
+  paymentNote   String?
+  pickedUpAt    DateTime?
+  droppedOffAt  DateTime?
+
+  // Relations
+  trip    Trip @relation(fields: [tripId], references: [id])
+  student User @relation(fields: [studentId], references: [id])
+
+  @@unique([tripId, studentId])
+  @@index([tripId])
+  @@index([studentId])
+  @@index([paymentStatus])
+  @@map("trip_students")
+}
+
+model JoinRequest {
+  id             String        @id @default(uuid())
+  organizationId String
+  studentId      String
+  message        String?
+  status         RequestStatus @default(PENDING)
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  student      User         @relation(fields: [studentId], references: [id])
+
+  @@index([organizationId])
+  @@index([studentId])
+  @@index([status])
+  @@map("join_requests")
+}
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  action         AuditAction
+  organizationId String?
+  userId         String?
+  performedById  String?
+  tripId         String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+
+  // Relations
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  user         User?         @relation("AuditUser", fields: [userId], references: [id])
+  performedBy  User?         @relation("PerformedBy", fields: [performedById], references: [id])
+  trip         Trip?         @relation(fields: [tripId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
