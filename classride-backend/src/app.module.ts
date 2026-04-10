@@ -1,9 +1,19 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { OwnersModule } from './owners/owners.module';
+import { DriversModule } from './drivers/drivers.module';
+import { StudentsModule } from './students/students.module';
+import { BusesModule } from './buses/buses.module';
+import { DestinationsModule } from './destinations/destinations.module';
+import { TripsModule } from './trips/trips.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
+  imports: [AuthModule, UsersModule, OwnersModule, DriversModule, StudentsModule, BusesModule, DestinationsModule, TripsModule, NotificationsModule, PrismaModule],
   controllers: [AppController],
   providers: [AppService],
 })
