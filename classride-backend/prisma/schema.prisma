@@ -45,6 +45,27 @@ enum RequestStatus {
 // MODELS
 // ─────────────────────────────────────────────
 
+model Organization {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String?  @unique
+  phone       String?
+  address     String?
+  logoUrl     String?  @map("logo_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users        User[]
+  buses        Bus[]
+  drivers      Driver[]
+  students     Student[]
+  destinations Destination[]
+  trips        Trip[]
+
+  @@map("organizations")
+}
 model User {
   phoneNumber String   @id @map("phone_number")
   fullName    String   @map("full_name")
@@ -52,6 +73,8 @@ model User {
   role        Role     @default(pending)
   fcmToken        String?  @map("fcm_token")
   refreshToken    String?  @map("refresh_token")
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   createdAt       DateTime @default(now()) @map("created_at")
 
   owner                  Owner?
@@ -95,6 +118,8 @@ model Driver {
 
   user  User  @relation(fields: [phoneNumber], references: [phoneNumber])
   owner Owner @relation(fields: [ownerPhone], references: [phoneNumber])
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 
   @@map("drivers")
 }
@@ -104,6 +129,8 @@ model Destination {
   name          String
   location      String?
   ownerPhone    String? @map("owner_phone")
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 
   owner    Owner?    @relation(fields: [ownerPhone], references: [phoneNumber])
   students Student[]
@@ -119,6 +146,8 @@ model Student {
   latitude      Float?
   longitude     Float?
   ownerPhone    String? @map("owner_phone")
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 
   user              User                      @relation(fields: [phoneNumber], references: [phoneNumber])
   destination       Destination?              @relation(fields: [destinationId], references: [destinationId])
@@ -138,6 +167,8 @@ model Bus {
   ownerPhone String  @map("owner_phone")
 
   owner Owner  @relation(fields: [ownerPhone], references: [phoneNumber])
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   trips Trip[]
 
   @@map("buses")
@@ -155,6 +186,8 @@ model Trip {
   status        TripStatus @default(scheduled)
   schedule      DateTime?
   createdAt     DateTime   @default(now()) @map("created_at")
+  organizationId  Int?     @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 
   bus         Bus?                @relation(fields: [busId], references: [busId])
   driver      User?               @relation("DriverTrips", fields: [driverPhone], references: [phoneNumber])
