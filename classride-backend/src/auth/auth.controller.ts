@@ -4,6 +4,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { JwtGuard } from './guards/jwt.guard';
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './guards/roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -35,4 +37,19 @@ export class AuthController {
   getMe(@Req() req: any) {
     return req.user;
   }
+
+@UseGuards(JwtGuard, RolesGuard)
+@Roles('owner' as any)
+@Get('owner-only')
+ownerOnly() {
+  return { message: 'Welcome owner!' };
+}
+
+@UseGuards(JwtGuard, RolesGuard)
+@Roles('driver' as any)
+@Get('driver-only')
+driverOnly() {
+  return { message: 'Welcome driver!' };
+}
+
 }
