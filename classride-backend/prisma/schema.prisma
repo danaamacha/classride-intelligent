@@ -11,291 +11,289 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum Role {
-  STUDENT
-  DRIVER
-  BUS_OWNER
-  SUPER_ADMIN
+  pending
+  owner
+  driver
+  student
+  admin
+}
+
+enum OwnerStatus {
+  pending
+  accepted
+  rejected
 }
 
 enum TripType {
-  MORNING
-  EVENING
+  morning
+  return
 }
 
 enum TripStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+  scheduled
+  active
+  completed
 }
 
 enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  EXCUSED
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  OVERDUE
-}
-
-enum AuditAction {
-  LOGIN
-  FAILED_LOGIN
-  LOGOUT
-  PASSWORD_CHANGED
-  USER_CREATED
-  USER_SUSPENDED
-  USER_ACTIVATED
-  ROLE_CHANGED
-  ORG_CREATED
-  ORG_APPROVED
-  ORG_SUSPENDED
-  BUS_CREATED
-  BUS_UPDATED
-  BUS_DELETED
-  DRIVER_ASSIGNED_TO_BUS
-  DRIVER_REMOVED_FROM_BUS
-  STUDENT_ADDED_TO_ROUTE
-  STUDENT_REMOVED_FROM_ROUTE
-  JOIN_REQUEST_SUBMITTED
-  JOIN_REQUEST_APPROVED
-  JOIN_REQUEST_REJECTED
-  TRIP_CREATED
-  TRIP_STARTED
-  TRIP_COMPLETED
-  TRIP_CANCELLED
-  ATTENDANCE_MARKED
-  PAYMENT_CONFIRMED
-  PAYMENT_EDITED
+  pending
+  accepted
+  rejected
 }
 
 // ─────────────────────────────────────────────
 // MODELS
 // ─────────────────────────────────────────────
 
-model Organization {
-  id         String   @id @default(uuid())
-  name       String
-  email      String   @unique
-  phone      String?
-  address    String?
-  logoUrl    String?
-  isActive   Boolean  @default(true)
-  isApproved Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  users        User[]
-  buses        Bus[]
-  routes       Route[]
-  trips        Trip[]
-  joinRequests JoinRequest[]
-  auditLogs    AuditLog[]
-
-  @@map("organizations")
-}
-
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  password       String
-  firstName      String
-  lastName       String
-  phone          String?
-  role           Role
-  isActive       Boolean  @default(true)
-  organizationId String?
-  homeAddress    String?
-  homeLat        Float?
-  homeLng        Float?
-  university     String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  phoneNumber String   @id @map("phone_number")
+  fullName    String   @map("full_name")
+  password    String
+  role        Role     @default(pending)
+  fcmToken    String?  @map("fcm_token")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  // Relations
-  organization   Organization?  @relation(fields: [organizationId], references: [id])
-  assignedBus    Bus?           @relation("DriverBus")
-  routeStudents  RouteStudent[]
-  tripStudents   TripStudent[]
-  joinRequests   JoinRequest[]
-  auditLogsBy    AuditLog[]     @relation("PerformedBy")
-  auditLogsFor   AuditLog[]     @relation("AuditUser")
+  owner                  Owner?
+  driver                 Driver?
+  student                Student?
+  tripsAsDriver          Trip[]                   @relation("DriverTrips")
+  notifications          Notification[]
+  sentMessages           Message[]
+  joinRequestsAsStudent  StudentJoinRequest[]     @relation("StudentRequests")
+  joinRequestsAsOwner    StudentJoinRequest[]     @relation("OwnerRequests")
+  availabilityRequests   AvailabilityRequest[]
+  rideRequests           RideRequest[]
+  chatParticipant1       Chat[]                   @relation("Participant1")
+  chatParticipant2       Chat[]                   @relation("Participant2")
 
-  @@index([organizationId])
-  @@index([role])
-  @@index([isActive])
   @@map("users")
 }
 
+model Owner {
+  phoneNumber String      @id @map("phone_number")
+  busLogo     String?     @map("bus_logo")
+  homeTown    String?     @map("home_town")
+  latitude    Float?
+  longitude   Float?
+  status      OwnerStatus @default(pending)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [phoneNumber], references: [phoneNumber])
+  buses        Bus[]
+  drivers      Driver[]
+  students     Student[]
+  destinations Destination[]
+
+  @@map("owners")
+}
+
+model Driver {
+  phoneNumber String  @id @map("phone_number")
+  homeTown    String? @map("home_town")
+  ownerPhone  String  @map("owner_phone")
+
+  user  User  @relation(fields: [phoneNumber], references: [phoneNumber])
+  owner Owner @relation(fields: [ownerPhone], references: [phoneNumber])
+
+  @@map("drivers")
+}
+
+model Destination {
+  destinationId Int     @id @default(autoincrement()) @map("destination_id")
+  name          String
+  location      String?
+  ownerPhone    String? @map("owner_phone")
+
+  owner    Owner?    @relation(fields: [ownerPhone], references: [phoneNumber])
+  students Student[]
+  trips    Trip[]
+
+  @@map("destinations")
+}
+
+model Student {
+  phoneNumber   String  @id @map("phone_number")
+  destinationId Int?    @map("destination_id")
+  homeAddress   String? @map("home_address")
+  latitude      Float?
+  longitude     Float?
+  ownerPhone    String? @map("owner_phone")
+
+  user              User                      @relation(fields: [phoneNumber], references: [phoneNumber])
+  destination       Destination?              @relation(fields: [destinationId], references: [destinationId])
+  owner             Owner?                    @relation(fields: [ownerPhone], references: [phoneNumber])
+tripAssignments   StudentAssignment[]
+  weeklySchedules   StudentWeeklySchedule[]
+  scheduleOverrides StudentScheduleOverride[]
+  payments          Payment[]
+
+  @@map("students")
+}
+
 model Bus {
-  id             String   @id @default(uuid())
-  organizationId String
-  plateNumber    String   @unique
-  model          String?
-  capacity       Int
-  isActive       Boolean  @default(true)
-  driverId       String?  @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  busId      Int     @id @default(autoincrement()) @map("bus_id")
+  busName    String? @map("bus_name")
+  capacity   Int
+  ownerPhone String  @map("owner_phone")
 
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id])
-  driver       User?        @relation("DriverBus", fields: [driverId], references: [id])
-  routes       Route[]
+  owner Owner  @relation(fields: [ownerPhone], references: [phoneNumber])
+  trips Trip[]
 
-  @@index([organizationId])
-  @@index([isActive])
   @@map("buses")
 }
 
-model Route {
-  id             String   @id @default(uuid())
-  organizationId String
-  busId          String
-  name           String
-  tripType       TripType
-  destination    String
-  destinationLat Float?
-  destinationLng Float?
-  departureTime  String
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Relations
-  organization Organization   @relation(fields: [organizationId], references: [id])
-  bus          Bus             @relation(fields: [busId], references: [id])
-  students     RouteStudent[]
-  trips        Trip[]
-
-  @@index([organizationId])
-  @@index([busId])
-  @@index([isActive])
-  @@map("routes")
-}
-
-model RouteStudent {
-  id        String   @id @default(uuid())
-  routeId   String
-  studentId String
-  stopOrder Int
-  isActive  Boolean  @default(true)
-  addedAt   DateTime @default(now())
-
-  // Relations
-  route   Route @relation(fields: [routeId], references: [id])
-  student User  @relation(fields: [studentId], references: [id])
-
-  @@unique([routeId, studentId])
-  @@unique([routeId, stopOrder])
-  @@index([routeId])
-  @@index([studentId])
-  @@map("route_students")
-}
-
 model Trip {
-  id             String     @id @default(uuid())
-  organizationId String
-  routeId        String
-  tripType       TripType
-  status         TripStatus @default(SCHEDULED)
-  scheduledDate  DateTime
-  startedAt      DateTime?
-  completedAt    DateTime?
-  cancelledAt    DateTime?
-  cancelReason   String?
-  notes          String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  tripId        Int        @id @default(autoincrement()) @map("trip_id")
+  busId         Int?       @map("bus_id")
+  driverPhone   String?    @map("driver_phone")
+  destinationId Int?       @map("destination_id")
+  pickupTime    String?    @map("pickup_time")
+  dropoffTime   String?    @map("dropoff_time")
+  date          DateTime?  @db.Date
+  type          TripType?
+  status        TripStatus @default(scheduled)
+  schedule      DateTime?
+  createdAt     DateTime   @default(now()) @map("created_at")
 
-  // Relations
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  route        Route          @relation(fields: [routeId], references: [id])
-  students     TripStudent[]
-  auditLogs    AuditLog[]
+  bus         Bus?                @relation(fields: [busId], references: [busId])
+  driver      User?               @relation("DriverTrips", fields: [driverPhone], references: [phoneNumber])
+  destination Destination?        @relation(fields: [destinationId], references: [destinationId])
+  assignments StudentAssignment[]
+  payments    Payment[]
 
-  @@index([organizationId])
-  @@index([routeId])
-  @@index([status])
-  @@index([scheduledDate])
   @@map("trips")
 }
 
-model TripStudent {
-  id            String           @id @default(uuid())
-  tripId        String
-  studentId     String
-  attendance    AttendanceStatus @default(PRESENT)
-  paymentStatus PaymentStatus    @default(PENDING)
-  amountDue     Decimal?         @db.Decimal(10, 2)
-  amountPaid    Decimal?         @db.Decimal(10, 2)
-  paymentNote   String?
-  pickedUpAt    DateTime?
-  droppedOffAt  DateTime?
+model StudentAssignment {
+  id           Int    @id @default(autoincrement())
+  tripId       Int    @map("trip_id")
+  studentPhone String @map("student_phone")
 
-  // Relations
-  trip    Trip @relation(fields: [tripId], references: [id])
-  student User @relation(fields: [studentId], references: [id])
+  trip    Trip    @relation(fields: [tripId], references: [tripId])
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
 
-  @@unique([tripId, studentId])
-  @@index([tripId])
-  @@index([studentId])
-  @@index([paymentStatus])
-  @@map("trip_students")
+  @@unique([tripId, studentPhone])
+  @@map("students_assignment")
 }
 
-model JoinRequest {
-  id             String        @id @default(uuid())
-  organizationId String
-  studentId      String
-  message        String?
-  status         RequestStatus @default(PENDING)
-  reviewedAt     DateTime?
-  reviewNote     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+model Payment {
+  id           Int     @id @default(autoincrement())
+  tripId       Int     @map("trip_id")
+  studentPhone String  @map("student_phone")
+  paid         Boolean @default(false)
 
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id])
-  student      User         @relation(fields: [studentId], references: [id])
+  trip    Trip    @relation(fields: [tripId], references: [tripId])
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
 
-  @@index([organizationId])
-  @@index([studentId])
-  @@index([status])
-  @@map("join_requests")
+  @@unique([tripId, studentPhone])
+  @@map("payments")
 }
 
-model AuditLog {
-  id             String      @id @default(uuid())
-  action         AuditAction
-  organizationId String?
-  userId         String?
-  performedById  String?
-  tripId         String?
-  ipAddress      String?
-  userAgent      String?
-  metadata       Json?
-  createdAt      DateTime    @default(now())
+model StudentWeeklySchedule {
+  id                Int     @id @default(autoincrement())
+  studentPhone      String  @map("student_phone")
+  dayOfWeek         Int     @map("day_of_week")
+  morningTime       String? @map("morning_time")
+  returnTime        String? @map("return_time")
+  attendanceMorning Boolean @default(true) @map("attendance_morning")
+  attendanceReturn  Boolean @default(true) @map("attendance_return")
 
-  // Relations
-  organization Organization? @relation(fields: [organizationId], references: [id])
-  user         User?         @relation("AuditUser", fields: [userId], references: [id])
-  performedBy  User?         @relation("PerformedBy", fields: [performedById], references: [id])
-  trip         Trip?         @relation(fields: [tripId], references: [id])
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
 
-  @@index([organizationId])
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("audit_logs")
+  @@unique([studentPhone, dayOfWeek])
+  @@map("student_weekly_schedules")
+}
+
+model StudentScheduleOverride {
+  id                  Int      @id @default(autoincrement())
+  studentPhone        String   @map("student_phone")
+  date                DateTime @db.Date
+  overrideMorningTime String?  @map("override_morning_time")
+  overrideReturnTime  String?  @map("override_return_time")
+  attendanceMorning   Boolean  @default(true) @map("attendance_morning")
+  attendanceReturn    Boolean  @default(true) @map("attendance_return")
+
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
+
+  @@unique([studentPhone, date])
+  @@map("student_schedule_overrides")
+}
+
+model StudentJoinRequest {
+  reqId      Int           @id @default(autoincrement()) @map("req_id")
+  ownerPhone String        @map("owner_phone")
+  userPhone  String        @map("user_phone")
+  status     RequestStatus @default(pending)
+  reqDate    DateTime      @default(now()) @map("req_date")
+
+  owner   User @relation("OwnerRequests", fields: [ownerPhone], references: [phoneNumber])
+  student User @relation("StudentRequests", fields: [userPhone], references: [phoneNumber])
+
+  @@map("students_join_requests")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userPhone String   @map("user_phone")
+  title     String?
+  body      String?
+  type      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userPhone], references: [phoneNumber])
+
+  @@map("notifications")
+}
+
+model Chat {
+  chatId            String @id @map("chat_id")
+  participant1Phone String @map("participant_1_phone")
+  participant2Phone String @map("participant_2_phone")
+
+  participant1 User      @relation("Participant1", fields: [participant1Phone], references: [phoneNumber])
+  participant2 User      @relation("Participant2", fields: [participant2Phone], references: [phoneNumber])
+  messages     Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id          Int      @id @default(autoincrement())
+  chatId      String   @map("chat_id")
+  senderPhone String   @map("sender_phone")
+  messageText String?  @map("message_text")
+  sentAt      DateTime @default(now()) @map("sent_at")
+
+  chat   Chat @relation(fields: [chatId], references: [chatId])
+  sender User @relation(fields: [senderPhone], references: [phoneNumber])
+
+  @@map("messages")
+}
+
+model AvailabilityRequest {
+  id          Int      @id @default(autoincrement())
+  userPhone   String   @map("user_phone")
+  role        String?
+  location    String?
+  destination String?
+  postedAt    DateTime @default(now()) @map("posted_at")
+
+  user User @relation(fields: [userPhone], references: [phoneNumber])
+
+  @@map("availability_requests")
+}
+
+model RideRequest {
+  id          Int      @id @default(autoincrement())
+  userPhone   String   @map("user_phone")
+  role        String?
+  location    String?
+  destination String?
+  postedAt    DateTime @default(now()) @map("posted_at")
+
+  user User @relation(fields: [userPhone], references: [phoneNumber])
+
+  @@map("ride_requests")
 }
