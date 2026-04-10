@@ -50,8 +50,9 @@ model User {
   fullName    String   @map("full_name")
   password    String
   role        Role     @default(pending)
-  fcmToken    String?  @map("fcm_token")
-  createdAt   DateTime @default(now()) @map("created_at")
+  fcmToken        String?  @map("fcm_token")
+  refreshToken    String?  @map("refresh_token")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   owner                  Owner?
   driver                 Driver?
