@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import OwnerTabNavigator from './OwnerTabNavigator';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -41,7 +42,7 @@ export default function AppNavigator() {
           </>
         ) : user.role === 'owner' ? (
           // Owner screens
-          <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+<Stack.Screen name="OwnerDashboard" component={OwnerTabNavigator} />
         ) : user.role === 'driver' ? (
           // Driver screens
           <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
