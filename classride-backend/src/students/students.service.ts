@@ -5,10 +5,16 @@ import { ConflictException } from '@nestjs/common';
 import { JoinRequestDto } from './dto/join-request.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import * as bcrypt from 'bcrypt';
+import { NotificationsService } from '../notifications/notifications.service';
+
+
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async create(dto: CreateStudentDto, ownerPhone: string) {
     const generatedPassword = Math.random().toString(36).slice(-8);
@@ -98,37 +104,38 @@ export class StudentsService {
   }
   // Student sends join request to owner
   async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
-    // Check owner exists
     const owner = await this.prisma.owner.findUnique({
       where: { phoneNumber: dto.ownerPhone },
     });
 
-    if (!owner) {
-      throw new NotFoundException('Owner not found');
-    }
+    if (!owner) throw new NotFoundException('Owner not found');
 
-    // Check if request already exists
     const existing = await this.prisma.studentJoinRequest.findFirst({
-      where: {
-        ownerPhone: dto.ownerPhone,
-        userPhone: studentPhone,
-        status: 'pending',
-      },
+      where: { ownerPhone: dto.ownerPhone, userPhone: studentPhone, status: 'pending' },
     });
 
-    if (existing) {
-      throw new ConflictException('Join request already sent');
-    }
+    if (existing) throw new ConflictException('Join request already sent');
 
-    return this.prisma.studentJoinRequest.create({
-      data: {
-        ownerPhone: dto.ownerPhone,
-        userPhone: studentPhone,
-        status: 'pending',
-      },
+    // Get student name
+    const student = await this.prisma.user.findUnique({
+      where: { phoneNumber: studentPhone },
+      select: { fullName: true },
     });
+
+    const request = await this.prisma.studentJoinRequest.create({
+      data: { ownerPhone: dto.ownerPhone, userPhone: studentPhone, status: 'pending' },
+    });
+
+    // Notify owner
+    await this.notifications.create({
+      userPhone: dto.ownerPhone,
+      title: '📥 New Join Request',
+      body: `${student?.fullName} has requested to join your bus`,
+      type: 'join_request',
+    });
+
+    return request;
   }
-
   // Owner gets all pending join requests
   async getJoinRequests(ownerPhone: string) {
   const requests = await this.prisma.studentJoinRequest.findMany({
