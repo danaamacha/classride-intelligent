@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -11,6 +12,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
+  // ─── Owner routes ───────────────────────────────
   @UseGuards(RolesGuard)
   @Roles('owner' as any)
   @Post()
@@ -53,9 +55,45 @@ export class StudentsController {
     return this.studentsService.rejectJoinRequest(studentPhone, req.user.phoneNumber);
   }
 
-  // Any logged in user can send a join request
+  // ─── Any logged in user ───────────────────────────────
   @Post('join-request')
   sendJoinRequest(@Body() dto: JoinRequestDto, @Req() req: any) {
     return this.studentsService.sendJoinRequest(dto, req.user.phoneNumber);
+  }
+
+  // ─── Student routes ───────────────────────────────
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Get('my/trips')
+  getAssignedTrips(@Req() req: any) {
+    return this.studentsService.getAssignedTrips(req.user.phoneNumber);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Get('my/trips/active')
+  getActiveTrip(@Req() req: any) {
+    return this.studentsService.getActiveTrip(req.user.phoneNumber);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Get('my/schedule')
+  getWeeklySchedule(@Req() req: any) {
+    return this.studentsService.getWeeklySchedule(req.user.phoneNumber);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Get('my/attendance')
+  getAttendance(@Req() req: any, @Query('date') date: string) {
+    return this.studentsService.getAttendance(req.user.phoneNumber, date);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Put('my/attendance')
+  updateAttendance(@Body() dto: UpdateAttendanceDto, @Req() req: any) {
+    return this.studentsService.updateAttendance(dto, req.user.phoneNumber);
   }
 }

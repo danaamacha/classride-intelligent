@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { ConflictException } from '@nestjs/common';
 import { JoinRequestDto } from './dto/join-request.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -197,5 +198,96 @@ export class StudentsService {
     });
 
     return { message: 'Join request rejected' };
+  }
+  async getAssignedTrips(studentPhone: string) {
+    return this.prisma.studentAssignment.findMany({
+      where: { studentPhone },
+      include: {
+        trip: {
+          include: {
+            bus: true,
+            destination: true,
+            driver: {
+              select: { fullName: true, phoneNumber: true },
+            },
+          },
+        },
+      },
+      orderBy: { trip: { date: 'desc' } },
+    });
+  }
+
+  async getActiveTrip(studentPhone: string) {
+    const assignment = await this.prisma.studentAssignment.findFirst({
+      where: {
+        studentPhone,
+        trip: { status: 'active' },
+      },
+      include: {
+        trip: {
+          include: {
+            bus: true,
+            destination: true,
+            driver: {
+              select: { fullName: true, phoneNumber: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!assignment) return { message: 'No active trip found' };
+    return assignment.trip;
+  }
+
+  async getWeeklySchedule(studentPhone: string) {
+    return this.prisma.studentWeeklySchedule.findMany({
+      where: { studentPhone },
+      orderBy: { dayOfWeek: 'asc' },
+    });
+  }
+
+  async getAttendance(studentPhone: string, date: string) {
+    const weekday = new Date(date).getDay();
+    const dayMap: { [key: number]: number } = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+    const mappedDay = dayMap[weekday];
+
+    const override = await this.prisma.studentScheduleOverride.findUnique({
+      where: { studentPhone_date: { studentPhone, date: new Date(date) } },
+    });
+
+    if (override) return override;
+
+    const weekly = await this.prisma.studentWeeklySchedule.findUnique({
+      where: { studentPhone_dayOfWeek: { studentPhone, dayOfWeek: mappedDay } },
+    });
+
+    return weekly || { message: 'No schedule found for this date' };
+  }
+
+  async updateAttendance(dto: UpdateAttendanceDto, studentPhone: string) {
+    const weekday = new Date(dto.date).getDay();
+    const dayMap: { [key: number]: number } = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+    const mappedDay = dayMap[weekday];
+
+    const weekly = await this.prisma.studentWeeklySchedule.findUnique({
+      where: { studentPhone_dayOfWeek: { studentPhone, dayOfWeek: mappedDay } },
+    });
+
+    return this.prisma.studentScheduleOverride.upsert({
+      where: { studentPhone_date: { studentPhone, date: new Date(dto.date) } },
+      update: {
+        attendanceMorning: dto.attendanceMorning,
+        attendanceReturn: dto.attendanceReturn,
+      },
+      create: {
+        studentPhone,
+        date: new Date(dto.date),
+        overrideMorningTime: weekly?.morningTime,
+        overrideReturnTime: weekly?.returnTime,
+        attendanceMorning: dto.attendanceMorning,
+        attendanceReturn: dto.attendanceReturn,
+      },
+    });
   }
 }
