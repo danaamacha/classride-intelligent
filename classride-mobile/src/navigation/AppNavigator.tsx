@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import OwnerTabNavigator from './OwnerTabNavigator';
+import StudentJoinRequestScreen from '../screens/student/StudentJoinRequestScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -47,9 +48,11 @@ export default function AppNavigator() {
           // Driver screens
           <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
         ) : (
-          // Student screens
-          <Stack.Screen name="StudentHome" component={StudentHomeScreen} />
-        )}
+  <>
+    <Stack.Screen name="StudentHome" component={StudentHomeScreen} />
+    <Stack.Screen name="JoinRequest" component={StudentJoinRequestScreen} />
+  </>
+)}
       </Stack.Navigator>
     </NavigationContainer>
   );

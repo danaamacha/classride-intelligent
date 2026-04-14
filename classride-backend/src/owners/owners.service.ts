@@ -76,4 +76,14 @@ export class OwnersService {
       recentNotifications,
     };
   }
+  async getOwnersList() {
+  return this.prisma.owner.findMany({
+    where: { status: 'accepted' },
+    include: {
+      user: {
+        select: { fullName: true, phoneNumber: true },
+      },
+    },
+  });
+}
 }
