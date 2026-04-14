@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -39,12 +40,17 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
+  const quickLogin = (phone: string, pass: string) => {
+    setPhoneNumber(phone);
+    setPassword(pass);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
+      <ScrollView contentContainerStyle={styles.inner}>
         {/* Logo / Title */}
         <View style={styles.header}>
           <Text style={styles.logo}>🚌</Text>
@@ -95,7 +101,31 @@ export default function LoginScreen({ navigation }: any) {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+        {/* Quick Login Buttons (remove before launch) */}
+        <View style={styles.devSection}>
+          <Text style={styles.devTitle}>⚡ Quick Login (Dev Only)</Text>
+          <TouchableOpacity
+            style={styles.devBtn}
+            onPress={() => quickLogin('70123456', '123456')}
+          >
+            <Text style={styles.devBtnText}>👑 Owner</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.devBtn}
+            onPress={() => quickLogin('70999888', '7010xt57')}
+          >
+            <Text style={styles.devBtnText}>🚌 Driver</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.devBtn}
+            onPress={() => quickLogin('70111222', 'ea2jp9f7')}
+          >
+            <Text style={styles.devBtnText}>🎓 Student</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -106,9 +136,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   header: {
     alignItems: 'center',
@@ -178,4 +209,27 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontWeight: '700',
   },
+  devSection: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#FEF9C3',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+  },
+  devTitle: {
+    fontSize: 12,
+    color: '#854D0E',
+    fontWeight: '600',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  devBtn: {
+    backgroundColor: '#FEF08A',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  devBtnText: { color: '#854D0E', fontWeight: '700' },
 });

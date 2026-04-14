@@ -33,8 +33,7 @@ export class TripsService {
         pickupTime: dto.pickupTime,
         dropoffTime: dto.dropoffTime,
         type: dto.type,
-        date: new Date(dto.date),
-        status: 'scheduled',
+date: new Date(dto.date + 'T00:00:00.000Z'),        status: 'scheduled',
       },
       include: {
         bus: true,

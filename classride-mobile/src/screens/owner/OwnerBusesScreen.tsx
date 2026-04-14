@@ -10,6 +10,10 @@ import {
   Alert,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import api from '../../services/api';
 
@@ -133,54 +137,66 @@ export default function OwnerBusesScreen() {
 
       {/* Add Bus Modal */}
       <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+  visible={modalVisible}
+  transparent
+  animationType="slide"
+  onRequestClose={() => setModalVisible(false)}
+>
+  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Bus</Text>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Add New Bus</Text>
 
-            <Text style={styles.label}>Bus Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Bus 1"
-              value={busName}
-              onChangeText={setBusName}
-            />
+          <Text style={styles.label}>Bus Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Bus 1"
+            value={busName}
+            onChangeText={setBusName}
+            returnKeyType="next"
+          />
 
-            <Text style={styles.label}>Capacity</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 20"
-              value={capacity}
-              onChangeText={setCapacity}
-              keyboardType="number-pad"
-            />
+          <Text style={styles.label}>Capacity</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 20"
+            value={capacity}
+            onChangeText={setCapacity}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+          />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleAddBus}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Add Bus</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => {
+                Keyboard.dismiss();
+                setModalVisible(false);
+              }}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleAddBus}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveBtnText}>Add Bus</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </KeyboardAvoidingView>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
     </View>
   );
 }
