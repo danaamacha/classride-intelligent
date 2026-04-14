@@ -23,20 +23,28 @@ export default function StudentHomeScreen({ navigation }: any) {  const { user, 
   }, []);
 
   const fetchData = async () => {
-    try {
-      const [tripsRes, activeRes] = await Promise.all([
-        api.get('/students/my/trips'),
-        api.get('/students/my/trips/active'),
-      ]);
-      setTrips(tripsRes.data);
-      setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
-    } catch (error) {
-      console.log('Error fetching student data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  try {
+    const [tripsRes, activeRes, scheduleRes] = await Promise.all([
+      api.get('/students/my/trips'),
+      api.get('/students/my/trips/active'),
+      api.get('/students/my/schedule'),
+    ]);
+
+    setTrips(tripsRes.data);
+    setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
+
+    // Redirect to profile setup if no schedule set
+    if (scheduleRes.data.length === 0) {
+      navigation.replace('ProfileSetup');
+      return;
     }
-  };
+  } catch (error) {
+    console.log('Error fetching student data:', error);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const handleMarkAbsent = async (date: string) => {
     Alert.alert(

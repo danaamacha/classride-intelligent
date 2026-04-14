@@ -86,8 +86,8 @@ export class StudentsController {
   @UseGuards(RolesGuard)
   @Roles('student' as any)
   @Get('my/attendance')
-  getAttendance(@Req() req: any, @Query('date') date: string) {
-    return this.studentsService.getAttendance(req.user.phoneNumber, date);
+  getAttendance(@Req() req: any) {
+    return this.studentsService.getAttendance(req.user.phoneNumber);
   }
 
   @UseGuards(RolesGuard)
@@ -95,5 +95,26 @@ export class StudentsController {
   @Put('my/attendance')
   updateAttendance(@Body() dto: UpdateAttendanceDto, @Req() req: any) {
     return this.studentsService.updateAttendance(dto, req.user.phoneNumber);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Put('my/profile')
+  updateProfile(@Body('homeAddress') homeAddress: string, @Req() req: any) {
+    return this.studentsService.updateProfile(req.user.phoneNumber, homeAddress);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Post('my/schedule')
+  saveWeeklySchedule(@Body() dto: any, @Req() req: any) {
+    return this.studentsService.saveWeeklySchedule(req.user.phoneNumber, dto);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('student' as any)
+  @Delete('my/schedule/:day')
+  deleteScheduleDay(@Param('day') day: string, @Req() req: any) {
+    return this.studentsService.deleteWeeklyScheduleDay(req.user.phoneNumber, parseInt(day));
   }
 }
