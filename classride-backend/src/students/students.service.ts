@@ -83,141 +83,130 @@ export class StudentsService {
   }
 
   async remove(phoneNumber: string, ownerPhone: string) {
-  const student = await this.prisma.student.findFirst({
-    where: { phoneNumber, ownerPhone },
-  });
+    const student = await this.prisma.student.findFirst({
+      where: { phoneNumber, ownerPhone },
+    });
 
-  if (!student) throw new NotFoundException('Student not found or not authorized');
+    if (!student) throw new NotFoundException('Student not found or not authorized');
 
-  // Delete related records first
-  await this.prisma.studentWeeklySchedule.deleteMany({ where: { studentPhone: phoneNumber } });
-  await this.prisma.studentScheduleOverride.deleteMany({ where: { studentPhone: phoneNumber } });
-  await this.prisma.studentAssignment.deleteMany({ where: { studentPhone: phoneNumber } });
-  await this.prisma.payment.deleteMany({ where: { studentPhone: phoneNumber } });
+    await this.prisma.studentWeeklySchedule.deleteMany({ where: { studentPhone: phoneNumber } });
+    await this.prisma.studentScheduleOverride.deleteMany({ where: { studentPhone: phoneNumber } });
+    await this.prisma.studentAssignment.deleteMany({ where: { studentPhone: phoneNumber } });
+    await this.prisma.payment.deleteMany({ where: { studentPhone: phoneNumber } });
+    await this.prisma.student.delete({ where: { phoneNumber } });
+    await this.prisma.user.update({
+      where: { phoneNumber },
+      data: { role: 'pending' },
+    });
 
-  await this.prisma.student.delete({ where: { phoneNumber } });
+    return { message: 'Student removed successfully' };
+  }
 
-  await this.prisma.user.update({
-    where: { phoneNumber },
-    data: { role: 'pending' },
-  });
-
-  return { message: 'Student removed successfully' };
-}
   // ─────────────────────────────────────────
   // JOIN REQUESTS
   // ─────────────────────────────────────────
-async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
-  const owner = await this.prisma.owner.findUnique({
-    where: { phoneNumber: dto.ownerPhone },
-  });
 
-  if (!owner) throw new NotFoundException('Owner not found');
-
-  const existing = await this.prisma.studentJoinRequest.findFirst({
-    where: { ownerPhone: dto.ownerPhone, userPhone: studentPhone, status: 'pending' },
-  });
-
-  if (existing) throw new ConflictException('Join request already sent');
-
-  const student = await this.prisma.user.findUnique({
-    where: { phoneNumber: studentPhone },
-    select: { fullName: true },
-  });
-
-  // Get or create destination
-  let destination = await this.prisma.destination.findFirst({
-    where: { name: { equals: dto.university, mode: 'insensitive' } },
-  });
-
-  if (!destination) {
-    destination = await this.prisma.destination.create({
-      data: { name: dto.university },
+  async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
+    const owner = await this.prisma.owner.findUnique({
+      where: { phoneNumber: dto.ownerPhone },
     });
-  }
 
-  // Create or update student record with home address + destination
-  await this.prisma.student.upsert({
-  where: { phoneNumber: studentPhone },
-  update: {
-    homeAddress: dto.homeAddress,
-    destinationId: destination.destinationId,
-    // ❌ Don't set ownerPhone yet — only after acceptance
-  },
-  create: {
-    phoneNumber: studentPhone,
-    homeAddress: dto.homeAddress,
-    destinationId: destination.destinationId,
-    // ❌ No ownerPhone
-  },
-});
+    if (!owner) throw new NotFoundException('Owner not found');
 
-  // Clear existing schedule and save new one
-  await this.prisma.studentWeeklySchedule.deleteMany({
-    where: { studentPhone },
-  });
+    const existing = await this.prisma.studentJoinRequest.findFirst({
+      where: { ownerPhone: dto.ownerPhone, userPhone: studentPhone, status: 'pending' },
+    });
 
-  for (const entry of dto.schedule) {
-    await this.prisma.studentWeeklySchedule.create({
-      data: {
-        studentPhone,
-        dayOfWeek: entry.day_of_week,
-        morningTime: entry.morning_time,
-        returnTime: entry.return_time,
-        attendanceMorning: true,
-        attendanceReturn: true,
+    if (existing) throw new ConflictException('Join request already sent');
+
+    const student = await this.prisma.user.findUnique({
+      where: { phoneNumber: studentPhone },
+      select: { fullName: true },
+    });
+
+    let destination = await this.prisma.destination.findFirst({
+      where: { name: { equals: dto.university, mode: 'insensitive' } },
+    });
+
+    if (!destination) {
+      destination = await this.prisma.destination.create({
+        data: { name: dto.university },
+      });
+    }
+
+    await this.prisma.student.upsert({
+      where: { phoneNumber: studentPhone },
+      update: {
+        homeAddress: dto.homeAddress,
+        destinationId: destination.destinationId,
+      },
+      create: {
+        phoneNumber: studentPhone,
+        homeAddress: dto.homeAddress,
+        destinationId: destination.destinationId,
       },
     });
-  }
 
-  // Create join request
-  const request = await this.prisma.studentJoinRequest.create({
-    data: {
-      ownerPhone: dto.ownerPhone,
-      userPhone: studentPhone,
-      status: 'pending',
-    },
-  });
+    await this.prisma.studentWeeklySchedule.deleteMany({ where: { studentPhone } });
 
-  // Notify owner with student details
-  await this.notifications.create({
-    userPhone: dto.ownerPhone,
-    title: '📥 New Join Request',
-    body: `${student?.fullName} from ${dto.homeAddress} wants to join your bus to ${dto.university}`,
-    type: 'join_request',
-  });
-
-  return { message: '🎉 Join request sent successfully!' };
-}
-
-  async getJoinRequests(ownerPhone: string) {
-  const requests = await this.prisma.studentJoinRequest.findMany({
-    where: { ownerPhone, status: 'pending' },
-    orderBy: { reqDate: 'desc' },
-  });
-
-  const requestsWithDetails = await Promise.all(
-    requests.map(async (req) => {
-      const user = await this.prisma.user.findUnique({
-        where: { phoneNumber: req.userPhone },
-        select: { fullName: true, phoneNumber: true },
-      });
-      const student = await this.prisma.student.findUnique({
-        where: { phoneNumber: req.userPhone },
-        include: {
-          destination: { select: { name: true } },
+    for (const entry of dto.schedule) {
+      await this.prisma.studentWeeklySchedule.create({
+        data: {
+          studentPhone,
+          dayOfWeek: entry.day_of_week,
+          morningTime: entry.morning_time,
+          returnTime: entry.return_time,
+          attendanceMorning: true,
+          attendanceReturn: true,
         },
       });
-      const schedule = await this.prisma.studentWeeklySchedule.findMany({
-        where: { studentPhone: req.userPhone },
-        orderBy: { dayOfWeek: 'asc' },
-      });
-      return { ...req, user, student, schedule };
-    }),
-  );
+    }
 
-  return requestsWithDetails;
-}
+    const request = await this.prisma.studentJoinRequest.create({
+      data: {
+        ownerPhone: dto.ownerPhone,
+        userPhone: studentPhone,
+        status: 'pending',
+      },
+    });
+
+    await this.notifications.create({
+      userPhone: dto.ownerPhone,
+      title: '📥 New Join Request',
+      body: `${student?.fullName} from ${dto.homeAddress} wants to join your bus to ${dto.university}`,
+      type: 'join_request',
+    });
+
+    return { message: '🎉 Join request sent successfully!' };
+  }
+
+  async getJoinRequests(ownerPhone: string) {
+    const requests = await this.prisma.studentJoinRequest.findMany({
+      where: { ownerPhone, status: 'pending' },
+      orderBy: { reqDate: 'desc' },
+    });
+
+    const requestsWithDetails = await Promise.all(
+      requests.map(async (req) => {
+        const user = await this.prisma.user.findUnique({
+          where: { phoneNumber: req.userPhone },
+          select: { fullName: true, phoneNumber: true },
+        });
+        const student = await this.prisma.student.findUnique({
+          where: { phoneNumber: req.userPhone },
+          include: { destination: { select: { name: true } } },
+        });
+        const schedule = await this.prisma.studentWeeklySchedule.findMany({
+          where: { studentPhone: req.userPhone },
+          orderBy: { dayOfWeek: 'asc' },
+        });
+        return { ...req, user, student, schedule };
+      }),
+    );
+
+    return requestsWithDetails;
+  }
+
   async acceptJoinRequest(studentPhone: string, ownerPhone: string) {
     const request = await this.prisma.studentJoinRequest.findFirst({
       where: { userPhone: studentPhone, ownerPhone, status: 'pending' },
@@ -338,10 +327,7 @@ async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
   async saveWeeklySchedule(studentPhone: string, dto: any) {
     const result = await this.prisma.studentWeeklySchedule.upsert({
       where: {
-        studentPhone_dayOfWeek: {
-          studentPhone,
-          dayOfWeek: dto.day_of_week,
-        },
+        studentPhone_dayOfWeek: { studentPhone, dayOfWeek: dto.day_of_week },
       },
       update: {
         morningTime: dto.morning_time,
@@ -359,7 +345,6 @@ async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
       },
     });
 
-    // Notify owner about schedule update
     const ownerPhone = await this.getOwnerPhone(studentPhone);
     if (ownerPhone) {
       const user = await this.prisma.user.findUnique({
@@ -454,37 +439,47 @@ async sendJoinRequest(dto: JoinRequestDto, studentPhone: string) {
     const morningTime = override?.overrideMorningTime ?? weekly?.morningTime;
     const returnTime = override?.overrideReturnTime ?? weekly?.returnTime;
 
-    // If new values match weekly — delete override (smart cleanup)
+    // Only delete override if attendance AND times all match weekly
+    const effectiveMorningTime = dto.overrideMorningTime ?? override?.overrideMorningTime ?? morningTime;
+    const effectiveReturnTime = dto.overrideReturnTime ?? override?.overrideReturnTime ?? returnTime;
+
     const matchesWeekly =
       dto.attendanceMorning === weekly?.attendanceMorning &&
-      dto.attendanceReturn === weekly?.attendanceReturn;
+      dto.attendanceReturn === weekly?.attendanceReturn &&
+      effectiveMorningTime === weekly?.morningTime &&
+      effectiveReturnTime === weekly?.returnTime;
 
     if (matchesWeekly && override) {
+      // Everything matches weekly — delete override
       await this.prisma.studentScheduleOverride.delete({
         where: { studentPhone_date: { studentPhone, date: new Date(dto.date) } },
       });
     } else if (override) {
+      // Update existing override
       await this.prisma.studentScheduleOverride.update({
         where: { studentPhone_date: { studentPhone, date: new Date(dto.date) } },
         data: {
           attendanceMorning: dto.attendanceMorning,
           attendanceReturn: dto.attendanceReturn,
+          overrideMorningTime: dto.overrideMorningTime ?? override.overrideMorningTime,
+          overrideReturnTime: dto.overrideReturnTime ?? override.overrideReturnTime,
         },
       });
-    } else {
+    } else if (!matchesWeekly) {
+      // Create new override only if different from weekly
       await this.prisma.studentScheduleOverride.create({
         data: {
           studentPhone,
           date: new Date(dto.date),
-          overrideMorningTime: morningTime,
-          overrideReturnTime: returnTime,
+          overrideMorningTime: dto.overrideMorningTime ?? morningTime,
+          overrideReturnTime: dto.overrideReturnTime ?? returnTime,
           attendanceMorning: dto.attendanceMorning,
           attendanceReturn: dto.attendanceReturn,
         },
       });
     }
 
-    // Auto-remove from trip + notify owner if marking absent for today/tomorrow
+    // Auto-remove from trip + notify owner if marking absent
     const today = new Date().toISOString().split('T')[0];
     const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const ownerPhone = await this.getOwnerPhone(studentPhone);

@@ -18,6 +18,7 @@ import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 // Student screens
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
 import StudentJoinRequestScreen from '../screens/student/StudentJoinRequestScreen';
+import StudentTabNavigator from './StudentTabNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,9 +48,9 @@ export default function AppNavigator() {
         ) : user.role === 'driver' ? (
           // Driver screens
           <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
-        ) : (
+       ) : (
   <>
-    <Stack.Screen name="StudentHome" component={StudentHomeScreen} />
+    <Stack.Screen name="StudentHome" component={StudentTabNavigator} />
     <Stack.Screen name="JoinRequest" component={StudentJoinRequestScreen} />
   </>
 )}
