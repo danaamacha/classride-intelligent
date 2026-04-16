@@ -96,20 +96,17 @@ export class StudentsController {
   updateAttendance(@Body() dto: UpdateAttendanceDto, @Req() req: any) {
     return this.studentsService.updateAttendance(dto, req.user.phoneNumber);
   }
-
-  @UseGuards(RolesGuard)
-  @Roles('student' as any)
-  @Put('my/profile')
-  updateProfile(@Body('homeAddress') homeAddress: string, @Req() req: any) {
-    return this.studentsService.updateProfile(req.user.phoneNumber, homeAddress);
-  }
-
-  @UseGuards(RolesGuard)
-  @Roles('student' as any)
-  @Post('my/schedule')
-  saveWeeklySchedule(@Body() dto: any, @Req() req: any) {
-    return this.studentsService.saveWeeklySchedule(req.user.phoneNumber, dto);
-  }
+// No role restriction — pending users need this
+@Put('my/profile')
+updateProfile(@Body('homeAddress') homeAddress: string, @Req() req: any) {
+  return this.studentsService.updateProfile(req.user.phoneNumber, homeAddress);
+}
+  // No role restriction — pending users need this to set up profile
+// No role restriction — pending users need this to set up profile
+@Post('my/schedule')
+saveWeeklySchedule(@Body() dto: any, @Req() req: any) {
+  return this.studentsService.saveWeeklySchedule(req.user.phoneNumber, dto);
+}
 
   @UseGuards(RolesGuard)
   @Roles('student' as any)

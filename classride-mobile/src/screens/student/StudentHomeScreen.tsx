@@ -12,7 +12,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export default function StudentHomeScreen({ navigation }: any) {  const { user, logout } = useAuth();
+export default function StudentHomeScreen({ navigation }: any) {
+  const { user, logout } = useAuth();
   const [trips, setTrips] = useState<any[]>([]);
   const [activeTrip, setActiveTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -23,28 +24,23 @@ export default function StudentHomeScreen({ navigation }: any) {  const { user, 
   }, []);
 
   const fetchData = async () => {
-  try {
-    const [tripsRes, activeRes, scheduleRes] = await Promise.all([
-      api.get('/students/my/trips'),
-      api.get('/students/my/trips/active'),
-      api.get('/students/my/schedule'),
-    ]);
-
-    setTrips(tripsRes.data);
-    setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
-
-    // Redirect to profile setup if no schedule set
-    if (scheduleRes.data.length === 0) {
-      navigation.replace('ProfileSetup');
-      return;
+    try {
+      // Only fetch trips if user is a student
+      if (user?.role === 'student') {
+        const [tripsRes, activeRes] = await Promise.all([
+          api.get('/students/my/trips'),
+          api.get('/students/my/trips/active'),
+        ]);
+        setTrips(tripsRes.data);
+        setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
+      }
+    } catch (error) {
+      console.log('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } catch (error) {
-    console.log('Error fetching student data:', error);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  };
 
   const handleMarkAbsent = async (date: string) => {
     Alert.alert(
@@ -88,7 +84,9 @@ export default function StudentHomeScreen({ navigation }: any) {  const { user, 
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Student Dashboard 🎓</Text>
+          <Text style={styles.greeting}>
+            {user?.role === 'pending' ? 'Welcome 👋' : 'Student Dashboard 🎓'}
+          </Text>
           <Text style={styles.studentName}>{user?.fullName}</Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -112,20 +110,34 @@ export default function StudentHomeScreen({ navigation }: any) {  const { user, 
         </View>
       )}
 
-      {/* Assigned Trips */}
+      {/* My Trips or Find a Bus */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📅 My Trips</Text>
         {trips.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyIcon}>🚌</Text>
-            <Text style={styles.emptyText}>No trips assigned yet</Text>
-<Text style={styles.emptySubtext}>Send a join request to a bus owner</Text>
-<TouchableOpacity
-  style={styles.findBusBtn}
-  onPress={() => navigation.navigate('JoinRequest')}
->
-  <Text style={styles.findBusBtnText}>🔍 Find a Bus</Text>
-</TouchableOpacity>          </View>
+            {user?.role === 'pending' ? (
+              <>
+                <Text style={styles.emptyText}>Welcome to ClassRide!</Text>
+                <Text style={styles.emptySubtext}>
+                  Find a bus owner and send a join request to get started
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.emptyText}>No trips assigned yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Send a join request to a bus owner
+                </Text>
+              </>
+            )}
+            <TouchableOpacity
+              style={styles.findBusBtn}
+              onPress={() => navigation.navigate('JoinRequest')}
+            >
+              <Text style={styles.findBusBtnText}>🔍 Find a Bus</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           trips.map((assignment: any) => {
             const trip = assignment.trip;
@@ -149,7 +161,6 @@ export default function StudentHomeScreen({ navigation }: any) {  const { user, 
                 <Text style={styles.tripInfo}>
                   {trip.type === 'morning' ? '🌅 Morning Trip' : '🌆 Return Trip'}
                 </Text>
-
                 {trip.status === 'scheduled' && (
                   <TouchableOpacity
                     style={styles.absentBtn}
@@ -235,12 +246,12 @@ const styles = StyleSheet.create({
   emptyText: { color: '#1E293B', fontSize: 16, fontWeight: '600' },
   emptySubtext: { color: '#94A3B8', fontSize: 14, marginTop: 4, textAlign: 'center' },
   findBusBtn: {
-  backgroundColor: '#059669',
-  borderRadius: 10,
-  padding: 14,
-  alignItems: 'center',
-  marginTop: 16,
-  width: '100%',
-},
-findBusBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    backgroundColor: '#059669',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 16,
+    width: '100%',
+  },
+  findBusBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

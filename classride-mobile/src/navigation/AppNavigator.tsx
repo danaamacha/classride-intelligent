@@ -18,7 +18,6 @@ import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 // Student screens
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
 import StudentJoinRequestScreen from '../screens/student/StudentJoinRequestScreen';
-import StudentProfileSetupScreen from '../screens/student/StudentProfileSetupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -52,7 +51,6 @@ export default function AppNavigator() {
   <>
     <Stack.Screen name="StudentHome" component={StudentHomeScreen} />
     <Stack.Screen name="JoinRequest" component={StudentJoinRequestScreen} />
-    <Stack.Screen name="ProfileSetup" component={StudentProfileSetupScreen} />
   </>
 )}
       </Stack.Navigator>
