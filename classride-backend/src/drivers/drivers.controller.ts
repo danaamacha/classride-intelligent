@@ -50,6 +50,13 @@ export class DriversController {
 
   @UseGuards(RolesGuard)
   @Roles('driver' as any)
+  @Get('trips/completed')
+  getCompletedTrips(@Req() req: any) {
+    return this.driversService.getCompletedTrips(req.user.phoneNumber);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('driver' as any)
   @Put('trips/:id/activate')
   activateTrip(@Param('id') id: string, @Req() req: any) {
     return this.driversService.activateTrip(Number(id), req.user.phoneNumber);

@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import OwnerTabNavigator from './OwnerTabNavigator';
 
+
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -14,6 +15,7 @@ import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
 
 // Driver screens
 import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
+import DriverTabNavigator from './DriverTabNavigator';
 
 // Student screens
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
@@ -46,9 +48,8 @@ export default function AppNavigator() {
           // Owner screens
 <Stack.Screen name="OwnerDashboard" component={OwnerTabNavigator} />
         ) : user.role === 'driver' ? (
-          // Driver screens
-          <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
-       ) : (
+  <Stack.Screen name="DriverHome" component={DriverTabNavigator} />
+) : (
   <>
     <Stack.Screen name="StudentHome" component={StudentTabNavigator} />
     <Stack.Screen name="JoinRequest" component={StudentJoinRequestScreen} />

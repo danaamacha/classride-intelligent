@@ -111,7 +111,26 @@ export class DriversService {
       orderBy: { date: 'desc' },
     });
   }
-
+async getCompletedTrips(driverPhone: string) {
+  return this.prisma.trip.findMany({
+    where: { driverPhone, status: 'completed' },
+    include: {
+      bus: true,
+      destination: true,
+      assignments: {
+        include: {
+          student: {
+            include: {
+              user: { select: { fullName: true, phoneNumber: true } },
+            },
+          },
+        },
+      },
+      payments: true,
+    },
+    orderBy: { date: 'desc' },
+  });
+}
   async getActiveTrip(driverPhone: string) {
     const trip = await this.prisma.trip.findFirst({
       where: { driverPhone, status: 'active' },
