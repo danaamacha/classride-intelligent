@@ -11,11 +11,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export default function OwnerDashboardScreen() {
+export default function OwnerDashboardScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchDashboard();
@@ -23,8 +24,12 @@ export default function OwnerDashboardScreen() {
 
   const fetchDashboard = async () => {
     try {
-      const response = await api.get('/owner/dashboard');
-      setDashboard(response.data);
+      const [dashboardRes, unreadRes] = await Promise.all([
+        api.get('/owner/dashboard'),
+        api.get('/notifications/unread/count'),
+      ]);
+      setDashboard(dashboardRes.data);
+      setUnreadCount(unreadRes.data.count);
     } catch (error) {
       console.log('Dashboard error:', error);
     } finally {
@@ -59,8 +64,16 @@ export default function OwnerDashboardScreen() {
           <Text style={styles.greeting}>Good morning 👋</Text>
           <Text style={styles.ownerName}>{user?.fullName}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity
+      
+          style={styles.notifBtn}
+onPress={() => navigation.getParent()?.navigate('Notifications')}        >
+          <Text style={styles.notifBtnText}>🔔</Text>
+          {unreadCount > 0 && (
+            <View style={styles.notifBadge}>
+              <Text style={styles.notifBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -111,7 +124,7 @@ export default function OwnerDashboardScreen() {
           </View>
         ) : (
           dashboard?.recentNotifications?.map((notif: any) => (
-            <View key={notif.id} style={[styles.notifCard, !notif.isRead && styles.unreadNotif]}>
+            <View key={notif.notifId ?? notif.id ?? String(Math.random())} style={[styles.notifCard, !notif.isRead && styles.unreadNotif]}>
               <Text style={styles.notifTitle}>{notif.title}</Text>
               <Text style={styles.notifBody}>{notif.body}</Text>
             </View>
@@ -145,8 +158,6 @@ const styles = StyleSheet.create({
   },
   greeting: { color: '#BFDBFE', fontSize: 14 },
   ownerName: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-  logoutBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 8 },
-  logoutText: { color: '#fff', fontSize: 14 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -203,4 +214,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { color: '#94A3B8', fontSize: 14 },
+  notifBtn: {
+    position: 'relative',
+    padding: 8,
+  },
+  notifBtnText: { fontSize: 24 },
+  notifBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 });

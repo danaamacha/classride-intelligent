@@ -190,26 +190,59 @@ export default function OwnerStudentsScreen() {
               <Text style={styles.emptyText}>No pending requests</Text>
             </View>
           ) : (
-            joinRequests.map((req: any) => (
-              <View key={req.reqId} style={styles.requestCard}>
-                <Text style={styles.cardName}>{req.user?.fullName}</Text>
-                <Text style={styles.cardPhone}>📱 {req.userPhone}</Text>
-                <View style={styles.requestButtons}>
-                  <TouchableOpacity
-                    style={styles.acceptBtn}
-                    onPress={() => handleAccept(req.userPhone)}
-                  >
-                    <Text style={styles.acceptBtnText}>✅ Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.rejectBtn}
-                    onPress={() => handleReject(req.userPhone)}
-                  >
-                    <Text style={styles.rejectBtnText}>❌ Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+           joinRequests.map((req: any) => (
+  <View key={req.reqId} style={styles.requestCard}>
+    {/* Student Name + Phone */}
+    <Text style={styles.cardName}>{req.user?.fullName}</Text>
+    <Text style={styles.cardPhone}>📱 {req.userPhone}</Text>
+
+    {/* Student Details */}
+    {req.student?.homeAddress && (
+      <Text style={styles.cardDetail}>🏠 {req.student.homeAddress}</Text>
+    )}
+    {req.student?.destination?.name && (
+      <Text style={styles.cardDetail}>🎓 {req.student.destination.name}</Text>
+    )}
+
+    {/* Weekly Schedule */}
+    {req.schedule?.length > 0 && (
+      <View style={styles.scheduleSection}>
+        <Text style={styles.scheduleTitle}>📅 Schedule:</Text>
+        <View style={styles.scheduleDays}>
+          {req.schedule.map((s: any) => (
+            <View key={s.dayOfWeek} style={styles.scheduleDay}>
+              <Text style={styles.scheduleDayName}>
+                {['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][s.dayOfWeek]}
+              </Text>
+              <Text style={styles.scheduleDayTime}>
+                🌅 {s.morningTime}
+              </Text>
+              <Text style={styles.scheduleDayTime}>
+                🌆 {s.returnTime}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    )}
+
+    {/* Accept/Reject Buttons */}
+    <View style={styles.requestButtons}>
+      <TouchableOpacity
+        style={styles.acceptBtn}
+        onPress={() => handleAccept(req.userPhone)}
+      >
+        <Text style={styles.acceptBtnText}>✅ Accept</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.rejectBtn}
+        onPress={() => handleReject(req.userPhone)}
+      >
+        <Text style={styles.rejectBtnText}>❌ Reject</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+))
           )
         )}
       </ScrollView>
@@ -413,4 +446,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
   },
   saveBtnText: { color: '#fff', fontWeight: '700' },
+  scheduleSection: {
+  marginTop: 10,
+  backgroundColor: '#F8FAFC',
+  borderRadius: 8,
+  padding: 10,
+},
+scheduleTitle: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#374151',
+  marginBottom: 8,
+},
+scheduleDays: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+},
+scheduleDay: {
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  padding: 8,
+  borderWidth: 1,
+  borderColor: '#E2E8F0',
+  minWidth: 70,
+  alignItems: 'center',
+},
+scheduleDayName: {
+  fontSize: 13,
+  fontWeight: '700',
+  color: '#2563EB',
+  marginBottom: 4,
+},
+scheduleDayTime: {
+  fontSize: 11,
+  color: '#64748B',
+  marginTop: 2,
+},
 });
