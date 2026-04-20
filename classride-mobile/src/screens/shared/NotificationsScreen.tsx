@@ -23,7 +23,6 @@ export default function NotificationsScreen({ navigation }: any) {
     try {
       const response = await api.get('/notifications');
       setNotifications(response.data);
-      // Mark all as read
       await api.put('/notifications/read-all');
     } catch (error) {
       console.log('Error fetching notifications:', error);
@@ -33,12 +32,40 @@ export default function NotificationsScreen({ navigation }: any) {
     }
   };
 
+  const handleNotifPress = async (notif: any) => {
+    const notifId = notif.notifId ?? notif.id;
+
+    // Mark as read
+    try {
+      await api.put(`/notifications/${notifId}/read`);
+      setNotifications(prev =>
+        prev.map(n =>
+          (n.notifId ?? n.id) === notifId ? { ...n, isRead: true } : n
+        )
+      );
+    } catch (error) {
+      console.log('Error marking read:', error);
+    }
+
+    // Navigate based on type
+   if (notif.type === 'join_request') {
+  navigation.getParent()?.navigate('OwnerDashboard', {
+    screen: 'Students',
+    initial: false,
+    params: { tab: 'requests' },
+  });
+
+   
+}
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'join_request': return '📥';
       case 'attendance': return '📅';
       case 'trip': return '🚌';
       case 'payment': return '💰';
+      case 'info': return 'ℹ️';
       default: return '🔔';
     }
   };
@@ -87,11 +114,14 @@ export default function NotificationsScreen({ navigation }: any) {
           </View>
         ) : (
           notifications.map((notif: any) => (
-            <View
-key={notif.notifId ?? notif.id ?? String(Math.random())}              style={[
+            <TouchableOpacity
+              key={notif.notifId ?? notif.id ?? String(Math.random())}
+              style={[
                 styles.notifCard,
                 !notif.isRead && styles.notifCardUnread,
               ]}
+              onPress={() => handleNotifPress(notif)}
+              activeOpacity={0.7}
             >
               <View style={styles.notifLeft}>
                 <Text style={styles.notifIcon}>
@@ -104,9 +134,12 @@ key={notif.notifId ?? notif.id ?? String(Math.random())}              style={[
                 <Text style={styles.notifTime}>
                   {getTimeAgo(notif.createdAt)}
                 </Text>
+                {notif.type === 'join_request' && (
+                  <Text style={styles.notifAction}>Tap to review request →</Text>
+                )}
               </View>
               {!notif.isRead && <View style={styles.unreadDot} />}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -175,6 +208,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 6,
+  },
+  notifAction: {
+    fontSize: 12,
+    color: '#2563EB',
+    fontWeight: '600',
+    marginTop: 4,
   },
   unreadDot: {
     width: 8,

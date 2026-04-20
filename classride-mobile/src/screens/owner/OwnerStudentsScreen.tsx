@@ -11,19 +11,21 @@ import {
   TextInput,
   Modal,
   KeyboardAvoidingView,
-Platform,
-TouchableWithoutFeedback,
-Keyboard,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import api from '../../services/api';
 
-export default function OwnerStudentsScreen() {
+export default function OwnerStudentsScreen({ route }: any) {
   const [students, setStudents] = useState<any[]>([]);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'students' | 'requests'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'requests'>(
+    route?.params?.tab === 'requests' ? 'requests' : 'students'
+  );
   const [phoneNumber, setPhoneNumber] = useState('');
   const [fullName, setFullName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -31,6 +33,12 @@ export default function OwnerStudentsScreen() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (route?.params?.tab === 'requests') {
+      setActiveTab('requests');
+    }
+  }, [route?.params?.tab]);
 
   const fetchData = async () => {
     try {
@@ -53,7 +61,6 @@ export default function OwnerStudentsScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     setSaving(true);
     try {
       const response = await api.post('/students', { phoneNumber, fullName });
@@ -190,124 +197,116 @@ export default function OwnerStudentsScreen() {
               <Text style={styles.emptyText}>No pending requests</Text>
             </View>
           ) : (
-           joinRequests.map((req: any) => (
-  <View key={req.reqId} style={styles.requestCard}>
-    {/* Student Name + Phone */}
-    <Text style={styles.cardName}>{req.user?.fullName}</Text>
-    <Text style={styles.cardPhone}>📱 {req.userPhone}</Text>
+            joinRequests.map((req: any) => (
+              <View key={req.reqId} style={styles.requestCard}>
+                <Text style={styles.cardName}>{req.user?.fullName}</Text>
+                <Text style={styles.cardPhone}>📱 {req.userPhone}</Text>
 
-    {/* Student Details */}
-    {req.student?.homeAddress && (
-      <Text style={styles.cardDetail}>🏠 {req.student.homeAddress}</Text>
-    )}
-    {req.student?.destination?.name && (
-      <Text style={styles.cardDetail}>🎓 {req.student.destination.name}</Text>
-    )}
+                {req.student?.homeAddress && (
+                  <Text style={styles.cardDetail}>🏠 {req.student.homeAddress}</Text>
+                )}
+                {req.student?.destination?.name && (
+                  <Text style={styles.cardDetail}>🎓 {req.student.destination.name}</Text>
+                )}
 
-    {/* Weekly Schedule */}
-    {req.schedule?.length > 0 && (
-      <View style={styles.scheduleSection}>
-        <Text style={styles.scheduleTitle}>📅 Schedule:</Text>
-        <View style={styles.scheduleDays}>
-          {req.schedule.map((s: any) => (
-            <View key={s.dayOfWeek} style={styles.scheduleDay}>
-              <Text style={styles.scheduleDayName}>
-                {['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][s.dayOfWeek]}
-              </Text>
-              <Text style={styles.scheduleDayTime}>
-                🌅 {s.morningTime}
-              </Text>
-              <Text style={styles.scheduleDayTime}>
-                🌆 {s.returnTime}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    )}
+                {req.schedule?.length > 0 && (
+                  <View style={styles.scheduleSection}>
+                    <Text style={styles.scheduleTitle}>📅 Schedule:</Text>
+                    <View style={styles.scheduleDays}>
+                      {req.schedule.map((s: any) => (
+                        <View key={s.dayOfWeek} style={styles.scheduleDay}>
+                          <Text style={styles.scheduleDayName}>
+                            {['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][s.dayOfWeek]}
+                          </Text>
+                          <Text style={styles.scheduleDayTime}>🌅 {s.morningTime}</Text>
+                          <Text style={styles.scheduleDayTime}>🌆 {s.returnTime}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
 
-    {/* Accept/Reject Buttons */}
-    <View style={styles.requestButtons}>
-      <TouchableOpacity
-        style={styles.acceptBtn}
-        onPress={() => handleAccept(req.userPhone)}
-      >
-        <Text style={styles.acceptBtnText}>✅ Accept</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.rejectBtn}
-        onPress={() => handleReject(req.userPhone)}
-      >
-        <Text style={styles.rejectBtnText}>❌ Reject</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-))
+                <View style={styles.requestButtons}>
+                  <TouchableOpacity
+                    style={styles.acceptBtn}
+                    onPress={() => handleAccept(req.userPhone)}
+                  >
+                    <Text style={styles.acceptBtnText}>✅ Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.rejectBtn}
+                    onPress={() => handleReject(req.userPhone)}
+                  >
+                    <Text style={styles.rejectBtnText}>❌ Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
           )
         )}
       </ScrollView>
 
       {/* Add Student Modal */}
-     <Modal
-  visible={modalVisible}
-  transparent
-  animationType="slide"
-  onRequestClose={() => setModalVisible(false)}
->
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={styles.modalOverlay}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add Student</Text>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Add Student</Text>
 
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Sara Hassan"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Sara Hassan"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                />
 
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 70111222"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-          />
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 70111222"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
 
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => {
-                Keyboard.dismiss();
-                setModalVisible(false);
-              }}
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleAddStudent}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveBtnText}>Add Student</Text>
-              )}
-            </TouchableOpacity>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={handleAddStudent}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Add Student</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
-  </TouchableWithoutFeedback>
-</Modal>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -337,15 +336,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  tab: {
-    flex: 1,
-    padding: 14,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#2563EB',
-  },
+  tab: { flex: 1, padding: 14, alignItems: 'center' },
+  activeTab: { borderBottomWidth: 2, borderBottomColor: '#2563EB' },
   tabText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
   activeTabText: { color: '#2563EB', fontWeight: '700' },
   list: { padding: 16 },
@@ -447,40 +439,40 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: '#fff', fontWeight: '700' },
   scheduleSection: {
-  marginTop: 10,
-  backgroundColor: '#F8FAFC',
-  borderRadius: 8,
-  padding: 10,
-},
-scheduleTitle: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#374151',
-  marginBottom: 8,
-},
-scheduleDays: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 8,
-},
-scheduleDay: {
-  backgroundColor: '#fff',
-  borderRadius: 8,
-  padding: 8,
-  borderWidth: 1,
-  borderColor: '#E2E8F0',
-  minWidth: 70,
-  alignItems: 'center',
-},
-scheduleDayName: {
-  fontSize: 13,
-  fontWeight: '700',
-  color: '#2563EB',
-  marginBottom: 4,
-},
-scheduleDayTime: {
-  fontSize: 11,
-  color: '#64748B',
-  marginTop: 2,
-},
+    marginTop: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+  },
+  scheduleTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  scheduleDays: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  scheduleDay: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  scheduleDayName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
+    marginBottom: 4,
+  },
+  scheduleDayTime: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
 });

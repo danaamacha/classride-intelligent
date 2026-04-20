@@ -59,23 +59,28 @@ export default function OwnerDashboardScreen({ navigation }: any) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Good morning 👋</Text>
-          <Text style={styles.ownerName}>{user?.fullName}</Text>
+    <View style={styles.header}>
+  <View>
+    <Text style={styles.greeting}>Good morning 👋</Text>
+    <Text style={styles.ownerName}>{user?.fullName}</Text>
+  </View>
+  <View style={styles.headerRight}>
+    <TouchableOpacity
+      style={styles.notifBtn}
+      onPress={() => navigation.getParent()?.navigate('Notifications')}
+    >
+      <Text style={styles.notifBtnText}>🔔</Text>
+      {unreadCount > 0 && (
+        <View style={styles.notifBadge}>
+          <Text style={styles.notifBadgeText}>{unreadCount}</Text>
         </View>
-        <TouchableOpacity
-      
-          style={styles.notifBtn}
-onPress={() => navigation.getParent()?.navigate('Notifications')}        >
-          <Text style={styles.notifBtnText}>🔔</Text>
-          {unreadCount > 0 && (
-            <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      )}
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+      <Text style={styles.logoutText}>Logout</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
@@ -115,22 +120,7 @@ onPress={() => navigation.getParent()?.navigate('Notifications')}        >
         )}
       </View>
 
-      {/* Recent Notifications */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Notifications</Text>
-        {dashboard?.recentNotifications?.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No notifications</Text>
-          </View>
-        ) : (
-          dashboard?.recentNotifications?.map((notif: any) => (
-            <View key={notif.notifId ?? notif.id ?? String(Math.random())} style={[styles.notifCard, !notif.isRead && styles.unreadNotif]}>
-              <Text style={styles.notifTitle}>{notif.title}</Text>
-              <Text style={styles.notifBody}>{notif.body}</Text>
-            </View>
-          ))
-        )}
-      </View>
+      
     </ScrollView>
   );
 }
@@ -231,4 +221,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+logoutBtn: {
+  backgroundColor: 'rgba(255,255,255,0.2)',
+  padding: 8,
+  borderRadius: 8,
+},
+logoutText: { color: '#fff', fontSize: 14 },
 });
