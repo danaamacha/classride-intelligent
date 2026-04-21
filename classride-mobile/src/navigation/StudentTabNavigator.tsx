@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
 import StudentDailyScreen from '../screens/student/StudentDailyScreen';
-import StudentScheduleScreen from '../screens/student/StudentScheduleScreen';
-
+import StudentProfileScreen from '../screens/student/StudentProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export default function StudentTabNavigator() {
@@ -22,11 +21,12 @@ export default function StudentTabNavigator() {
           paddingTop: 8,
           height: 65,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+       tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Attendance') iconName = focused ? 'calendar' : 'calendar-outline';
-          else iconName = focused ? 'time' : 'time-outline';
+          else if (route.name === 'Schedule') iconName = focused ? 'time' : 'time-outline';
+          else iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -41,10 +41,11 @@ export default function StudentTabNavigator() {
   component={StudentDailyScreen}
   options={{ tabBarLabel: 'Daily' }}
 />
-      <Tab.Screen
-        name="Schedule"
-        component={StudentScheduleScreen}
-        options={{ tabBarLabel: 'Weekly' }}
+     
+  <Tab.Screen
+        name="Profile"
+        component={StudentProfileScreen}
+        options={{ tabBarLabel: 'Profile' }}
       />
     </Tab.Navigator>
   );

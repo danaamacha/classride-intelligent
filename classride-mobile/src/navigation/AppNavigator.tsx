@@ -12,6 +12,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import StudentJoinRequestScreen from '../screens/student/StudentJoinRequestScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
+import StudentProfileScreen from '../screens/student/StudentProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,6 +50,7 @@ export default function AppNavigator() {
             <Stack.Screen name="StudentHome" component={StudentTabNavigator} />
             <Stack.Screen name="JoinRequest" component={StudentJoinRequestScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="StudentProfile" component={StudentProfileScreen} />
           </>
         )}
       </Stack.Navigator>

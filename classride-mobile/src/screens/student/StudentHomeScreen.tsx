@@ -18,30 +18,43 @@ export default function StudentHomeScreen({ navigation }: any) {
   const [activeTrip, setActiveTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+const [unreadCount, setUnreadCount] = useState(0);
+const [pendingRequest, setPendingRequest] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    try {
-      // Only fetch trips if user is a student
-      if (user?.role === 'student') {
-        const [tripsRes, activeRes] = await Promise.all([
-          api.get('/students/my/trips'),
-          api.get('/students/my/trips/active'),
-        ]);
-        setTrips(tripsRes.data);
-        setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
-      }
-    } catch (error) {
-      console.log('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  try {
+    const unreadRes = await api.get('/notifications/unread/count');
+    setUnreadCount(unreadRes.data.count);
 
+    if (user?.role === 'student') {
+      const [tripsRes, activeRes] = await Promise.all([
+        api.get('/students/my/trips'),
+        api.get('/students/my/trips/active'),
+      ]);
+      setTrips(tripsRes.data);
+      setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
+    }
+
+    // Check pending request for pending users
+    if (user?.role === 'pending') {
+      try {
+        const requestRes = await api.get('/students/my/request');
+        setPendingRequest(requestRes.data);
+      } catch {
+        setPendingRequest(null);
+      }
+    }
+  } catch (error) {
+    console.log('Error fetching data:', error);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
   const handleMarkAbsent = async (date: string) => {
     Alert.alert(
       'Mark Absent',
@@ -82,17 +95,30 @@ export default function StudentHomeScreen({ navigation }: any) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>
-            {user?.role === 'pending' ? 'Welcome 👋' : 'Student Dashboard 🎓'}
-          </Text>
-          <Text style={styles.studentName}>{user?.fullName}</Text>
+     <View style={styles.header}>
+  <View>
+    <Text style={styles.greeting}>
+      {user?.role === 'pending' ? 'Welcome 👋' : 'Student Dashboard 🎓'}
+    </Text>
+    <Text style={styles.studentName}>{user?.fullName}</Text>
+  </View>
+  <View style={styles.headerRight}>
+    <TouchableOpacity
+      style={styles.notifBtn}
+      onPress={() => navigation.getParent()?.navigate('Notifications')}
+    >
+      <Text style={styles.notifBtnText}>🔔</Text>
+      {unreadCount > 0 && (
+        <View style={styles.notifBadge}>
+          <Text style={styles.notifBadgeText}>{unreadCount}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+      )}
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+      <Text style={styles.logoutText}>Logout</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
       {/* Active Trip */}
       {activeTrip && (
@@ -114,30 +140,65 @@ export default function StudentHomeScreen({ navigation }: any) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📅 My Trips</Text>
         {trips.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🚌</Text>
-            {user?.role === 'pending' ? (
-              <>
-                <Text style={styles.emptyText}>Welcome to ClassRide!</Text>
-                <Text style={styles.emptySubtext}>
-                  Find a bus owner and send a join request to get started
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.emptyText}>No trips assigned yet</Text>
-                <Text style={styles.emptySubtext}>
-                  Send a join request to a bus owner
-                </Text>
-              </>
-            )}
-            <TouchableOpacity
-              style={styles.findBusBtn}
-              onPress={() => navigation.navigate('JoinRequest')}
-            >
-              <Text style={styles.findBusBtnText}>🔍 Find a Bus</Text>
-            </TouchableOpacity>
+  <View style={styles.emptyCard}>
+    <Text style={styles.emptyIcon}>🚌</Text>
+    {user?.role === 'pending' && pendingRequest ? (
+      // Has pending request
+      <>
+        <Text style={styles.emptyText}>Request Sent! ⏳</Text>
+        <Text style={styles.emptySubtext}>
+          Your join request is pending with:
+        </Text>
+        <View style={styles.pendingOwnerCard}>
+          <Text style={styles.pendingOwnerName}>
+            👤 {pendingRequest.ownerName}
+          </Text>
+          <Text style={styles.pendingOwnerPhone}>
+            📱 {pendingRequest.ownerPhone}
+          </Text>
+          <View style={styles.pendingBadge}>
+            <Text style={styles.pendingBadgeText}>⏳ Awaiting approval</Text>
           </View>
+        </View>
+        <TouchableOpacity
+          style={styles.findBusBtnOutline}
+          onPress={() => navigation.navigate('JoinRequest')}
+        >
+          <Text style={styles.findBusBtnOutlineText}>
+            🔍 Try Another Owner
+          </Text>
+        </TouchableOpacity>
+      </>
+    ) : user?.role === 'pending' ? (
+      // No request yet
+      <>
+        <Text style={styles.emptyText}>Welcome to ClassRide!</Text>
+        <Text style={styles.emptySubtext}>
+          Find a bus owner and send a join request to get started
+        </Text>
+        <TouchableOpacity
+          style={styles.findBusBtn}
+          onPress={() => navigation.navigate('JoinRequest')}
+        >
+          <Text style={styles.findBusBtnText}>🔍 Find a Bus</Text>
+        </TouchableOpacity>
+      </>
+    ) : (
+      // Student with no trips
+      <>
+        <Text style={styles.emptyText}>No trips assigned yet</Text>
+        <Text style={styles.emptySubtext}>
+          Contact your bus owner to get assigned
+        </Text>
+        <TouchableOpacity
+          style={styles.findBusBtn}
+          onPress={() => navigation.navigate('JoinRequest')}
+        >
+          <Text style={styles.findBusBtnText}>🔍 Find a Bus</Text>
+        </TouchableOpacity>
+      </>
+    )}
+  </View>
         ) : (
           trips.map((assignment: any) => {
             const trip = assignment.trip;
@@ -254,4 +315,72 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   findBusBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+notifBtn: {
+  position: 'relative',
+  padding: 8,
+},
+notifBtnText: { fontSize: 24 },
+notifBadge: {
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  backgroundColor: '#DC2626',
+  borderRadius: 10,
+  minWidth: 18,
+  height: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+pendingOwnerCard: {
+  backgroundColor: '#FEF3C7',
+  borderRadius: 12,
+  padding: 14,
+  marginTop: 12,
+  width: '100%',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#FDE68A',
+},
+pendingOwnerName: {
+  fontSize: 16,
+  fontWeight: '700',
+  color: '#1E293B',
+},
+pendingOwnerPhone: {
+  fontSize: 14,
+  color: '#64748B',
+  marginTop: 4,
+},
+pendingBadge: {
+  backgroundColor: '#D97706',
+  borderRadius: 8,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  marginTop: 10,
+},
+pendingBadgeText: {
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: '700',
+},
+findBusBtnOutline: {
+  borderWidth: 2,
+  borderColor: '#059669',
+  borderRadius: 10,
+  padding: 14,
+  alignItems: 'center',
+  marginTop: 12,
+  width: '100%',
+},
+findBusBtnOutlineText: {
+  color: '#059669',
+  fontWeight: '700',
+  fontSize: 15,
+},
 });

@@ -114,4 +114,9 @@ saveWeeklySchedule(@Body() dto: any, @Req() req: any) {
   deleteScheduleDay(@Param('day') day: string, @Req() req: any) {
     return this.studentsService.deleteWeeklyScheduleDay(req.user.phoneNumber, parseInt(day));
   }
+  // Student can check their own pending request
+@Get('my/request')
+getMyRequest(@Req() req: any) {
+  return this.studentsService.getMyRequest(req.user.phoneNumber);
+}
 }

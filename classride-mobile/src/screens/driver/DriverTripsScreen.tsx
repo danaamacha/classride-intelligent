@@ -12,32 +12,33 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export default function DriverTripsScreen({ navigation }: any) {
-  const { user, logout } = useAuth();
+export default function DriverTripsScreen({ navigation }: any) {  const { user, logout } = useAuth();
   const [trips, setTrips] = useState<any[]>([]);
   const [activeTrip, setActiveTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+const [unreadCount, setUnreadCount] = useState(0);
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    try {
-      const [tripsRes, activeRes] = await Promise.all([
-        api.get('/driver/trips'),
-        api.get('/driver/trips/active'),
-      ]);
-      setTrips(tripsRes.data.filter((t: any) => t.status === 'scheduled'));
-      setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
-    } catch (error) {
-      console.log('Error fetching driver data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  try {
+    const [tripsRes, activeRes, unreadRes] = await Promise.all([
+      api.get('/driver/trips'),
+      api.get('/driver/trips/active'),
+      api.get('/notifications/unread/count'),
+    ]);
+    setTrips(tripsRes.data.filter((t: any) => t.status === 'scheduled'));
+    setActiveTrip(activeRes.data?.tripId ? activeRes.data : null);
+    setUnreadCount(unreadRes.data.count);
+  } catch (error) {
+    console.log('Error fetching driver data:', error);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const handleActivate = async (tripId: number) => {
     Alert.alert('Start Trip', 'Are you sure you want to start this trip?', [
@@ -98,15 +99,23 @@ export default function DriverTripsScreen({ navigation }: any) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} />}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Driver Dashboard 🚌</Text>
-          <Text style={styles.driverName}>{user?.fullName}</Text>
-        </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+<View style={styles.header}>
+  <View>
+    <Text style={styles.greeting}>Driver Dashboard 🚌</Text>
+    <Text style={styles.driverName}>{user?.fullName}</Text>
+  </View>
+  <View style={styles.headerRight}>
+    <TouchableOpacity
+      style={styles.notifBtn}
+      onPress={() => navigation.getParent()?.navigate('Notifications')}
+    >
+      <Text style={styles.notifBtnText}>🔔</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+      <Text style={styles.logoutText}>Logout</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
       {/* Active Trip */}
       {activeTrip && (
@@ -419,4 +428,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
+ 
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+notifBtn: {
+  position: 'relative',
+  padding: 8,
+},
+notifBtnText: { fontSize: 24 },
+notifBadge: {
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  backgroundColor: '#DC2626',
+  borderRadius: 10,
+  minWidth: 18,
+  height: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 });

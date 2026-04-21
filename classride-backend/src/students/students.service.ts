@@ -489,6 +489,7 @@ export class StudentsService {
     });
 
     if (dto.date === today || dto.date === tomorrow) {
+      // MARKING ABSENT → remove from trip + notify owner
       if (!dto.attendanceMorning) {
         await this.removeStudentFromTrip(studentPhone, dto.date, 'morning');
         if (ownerPhone) {
@@ -511,6 +512,74 @@ export class StudentsService {
           });
         }
       }
+
+      // MARKING PRESENT but not assigned → notify owner
+      if (dto.attendanceMorning) {
+        const assignedMorning = await this.isAssignedToTrip(studentPhone, dto.date, 'morning');
+        if (!assignedMorning && ownerPhone) {
+          await this.notifications.create({
+            userPhone: ownerPhone,
+            title: '📅 Student Unassigned',
+            body: `${user?.fullName} is attending morning on ${dto.date} but has no trip assigned`,
+            type: 'attendance',
+          });
+        }
+      }
+      if (dto.attendanceReturn) {
+        const assignedReturn = await this.isAssignedToTrip(studentPhone, dto.date, 'return');
+        if (!assignedReturn && ownerPhone) {
+          await this.notifications.create({
+            userPhone: ownerPhone,
+            title: '📅 Student Unassigned',
+            body: `${user?.fullName} is attending return on ${dto.date} but has no trip assigned`,
+            type: 'attendance',
+          });
+        }
+      }
+
+      // RETURN TIME CHANGED → remove from old trip + reassign to matching trip
+      const newReturnTime = dto.overrideReturnTime;
+      const oldReturnTime = weekly?.returnTime;
+      if (newReturnTime && newReturnTime !== oldReturnTime) {
+        await this.removeStudentFromTrip(studentPhone, dto.date, 'return');
+
+        const student = await this.prisma.student.findUnique({
+          where: { phoneNumber: studentPhone },
+          select: { destinationId: true },
+        });
+
+        if (student?.destinationId) {
+          const matchingTrip = await this.prisma.trip.findFirst({
+            where: {
+              date: new Date(dto.date + 'T00:00:00.000Z'),
+              type: 'return' as any,
+              pickupTime: newReturnTime,
+              destinationId: student.destinationId,
+            },
+          });
+
+          if (matchingTrip) {
+            await this.prisma.studentAssignment.upsert({
+              where: {
+                tripId_studentPhone: {
+                  tripId: matchingTrip.tripId,
+                  studentPhone,
+                },
+              },
+              update: {},
+              create: { tripId: matchingTrip.tripId, studentPhone },
+            });
+            if (ownerPhone) {
+              await this.notifications.create({
+                userPhone: ownerPhone,
+                title: '🔄 Student Reassigned',
+                body: `${user?.fullName} was auto-reassigned to a return trip on ${dto.date}`,
+                type: 'attendance',
+              });
+            }
+          }
+        }
+      }
     }
 
     return this.getAttendance(studentPhone);
@@ -531,11 +600,45 @@ export class StudentsService {
       });
     }
   }
+  
+async getMyRequest(studentPhone: string) {
+  const request = await this.prisma.studentJoinRequest.findFirst({
+    where: { userPhone: studentPhone, status: 'pending' },
+    orderBy: { reqDate: 'desc' },
+  });
 
+  if (!request) throw new NotFoundException('No pending request found');
+
+  // Get owner name
+  const owner = await this.prisma.user.findUnique({
+    where: { phoneNumber: request.ownerPhone },
+    select: { fullName: true },
+  });
+
+  return {
+    ownerPhone: request.ownerPhone,
+    ownerName: owner?.fullName ?? 'Unknown',
+    status: request.status,
+    reqDate: request.reqDate,
+  };
+}
   private async getOwnerPhone(studentPhone: string): Promise<string> {
     const student = await this.prisma.student.findUnique({
       where: { phoneNumber: studentPhone },
     });
     return student?.ownerPhone ?? '';
+
+  }
+  private async isAssignedToTrip(studentPhone: string, date: string, type: string): Promise<boolean> {
+    const assignments = await this.prisma.studentAssignment.findMany({
+      where: {
+        studentPhone,
+        trip: {
+          date: new Date(date + 'T00:00:00.000Z'),
+          type: type as any,
+        },
+      },
+    });
+    return assignments.length > 0;
   }
 }
