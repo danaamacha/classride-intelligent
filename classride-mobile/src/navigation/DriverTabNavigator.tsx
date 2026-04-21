@@ -2,8 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import DriverTripsScreen from '../screens/driver/DriverTripsScreen';
-import DriverHistoryScreen from '../screens/driver/DriverHistoryScreen';
-
+import DriverPaymentsScreen from '../screens/driver/DriverPaymentsScreen';
 const Tab = createBottomTabNavigator();
 
 export default function DriverTabNavigator() {
@@ -33,11 +32,20 @@ export default function DriverTabNavigator() {
         component={DriverTripsScreen}
         options={{ tabBarLabel: 'My Trips' }}
       />
-      <Tab.Screen
-        name="History"
-        component={DriverHistoryScreen}
-        options={{ tabBarLabel: 'History' }}
+    <Tab.Screen
+  name="History"
+  component={DriverPaymentsScreen}
+  options={{
+    tabBarLabel: 'Payments',
+    tabBarIcon: ({ focused, color, size }) => (
+      <Ionicons
+        name={focused ? 'wallet' : 'wallet-outline'}
+        size={size}
+        color={color}
       />
+    ),
+  }}
+/>
     </Tab.Navigator>
   );
 }

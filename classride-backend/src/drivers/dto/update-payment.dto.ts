@@ -1,13 +1,17 @@
-import { IsString, IsNotEmpty, IsBoolean, IsInt } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 export class UpdatePaymentDto {
-  @IsInt()
+  @IsNumber()
   tripId!: number;
 
   @IsString()
   @IsNotEmpty()
   studentPhone!: string;
 
-  @IsBoolean()
-  paid!: boolean;
+  @IsNumber()
+  amountPaid!: number;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }

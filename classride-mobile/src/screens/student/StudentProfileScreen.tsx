@@ -55,10 +55,13 @@ export default function StudentProfileScreen() {
   useEffect(() => {
     fetchProfile();
     fetchSchedule();
+    fetchBalance();
   }, []);
 
   // ─── Profile ───────────────────────────────────
-
+const [balance, setBalance] = useState<any>(null);
+const [loadingBalance, setLoadingBalance] = useState(true);
+const [balanceTxVisible, setBalanceTxVisible] = useState(false);
   const fetchProfile = async () => {
     try {
       const res = await api.get('/auth/me');
@@ -98,7 +101,16 @@ export default function StudentProfileScreen() {
       setLoadingSchedule(false);
     }
   };
-
+const fetchBalance = async () => {
+  try {
+    const res = await api.get('/payments/my/balance');
+    setBalance(res.data);
+  } catch (error) {
+    console.log('Error fetching balance:', error);
+  } finally {
+    setLoadingBalance(false);
+  }
+};
   const handleEdit = (day: any) => {
     setEditingDay(day);
     setMorningTime(day.morningTime || '07:00');
@@ -225,7 +237,47 @@ export default function StudentProfileScreen() {
               </>
             )}
           </View>
-
+{/* ── Balance Card ── */}
+{user?.role === 'student' && (
+  <TouchableOpacity
+    style={styles.sectionCard}
+    onPress={() => setBalanceTxVisible(true)}
+  >
+    <Text style={styles.sectionTitle}>💰 My Balance</Text>
+    <Text style={styles.sectionSubtitle}>Tap to view transaction history</Text>
+    {loadingBalance ? (
+      <ActivityIndicator color="#059669" />
+    ) : (
+      <View style={[
+        styles.balanceDisplay,
+        {
+          backgroundColor:
+            (balance?.balance ?? 0) > 0 ? '#FEF3C7' :
+            (balance?.balance ?? 0) < 0 ? '#FEE2E2' : '#DCFCE7',
+        }
+      ]}>
+        <Text style={[
+          styles.balanceAmount,
+          {
+            color:
+              (balance?.balance ?? 0) > 0 ? '#D97706' :
+              (balance?.balance ?? 0) < 0 ? '#DC2626' : '#059669',
+          }
+        ]}>
+          {(balance?.balance ?? 0) >= 0 ? '+' : ''}
+          {(balance?.balance ?? 0).toLocaleString()} LBP
+        </Text>
+        <Text style={styles.balanceLabel}>
+          {(balance?.balance ?? 0) > 0
+            ? '🟡 You have credit'
+            : (balance?.balance ?? 0) < 0
+            ? '🔴 You owe money'
+            : '✅ Settled'}
+        </Text>
+      </View>
+    )}
+  </TouchableOpacity>
+)}
           {/* ── Weekly Schedule ── */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>🗓️ Weekly Schedule</Text>
@@ -563,4 +615,11 @@ const styles = StyleSheet.create({
     flex: 1, padding: 14, borderRadius: 10, alignItems: 'center', backgroundColor: '#059669',
   },
   modalSaveBtnText: { color: '#fff', fontWeight: '700' },
+  balanceDisplay: {
+  borderRadius: 12,
+  padding: 16,
+  alignItems: 'center',
+},
+balanceAmount: { fontSize: 24, fontWeight: 'bold' },
+balanceLabel: { fontSize: 13, color: '#64748B', marginTop: 4 },
 });

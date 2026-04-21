@@ -180,35 +180,36 @@ async getCompletedTrips(driverPhone: string) {
     });
   }
 
+  
   async updatePayment(dto: UpdatePaymentDto, driverPhone: string) {
-    // Verify driver owns this trip
-    const trip = await this.prisma.trip.findFirst({
-      where: { tripId: dto.tripId, driverPhone },
-    });
+  const trip = await this.prisma.trip.findFirst({
+    where: { tripId: dto.tripId, driverPhone },
+  });
 
-    if (!trip) throw new NotFoundException('Trip not found or not authorized');
+  if (!trip) throw new NotFoundException('Trip not found or not authorized');
 
-    // Verify student is assigned to this trip
-    const assignment = await this.prisma.studentAssignment.findFirst({
-      where: { tripId: dto.tripId, studentPhone: dto.studentPhone },
-    });
+  const assignment = await this.prisma.studentAssignment.findFirst({
+    where: { tripId: dto.tripId, studentPhone: dto.studentPhone },
+  });
 
-    if (!assignment) throw new NotFoundException('Student not assigned to this trip');
+  if (!assignment) throw new NotFoundException('Student not assigned to this trip');
 
-    // Upsert payment record
-    return this.prisma.payment.upsert({
-      where: {
-        tripId_studentPhone: {
-          tripId: dto.tripId,
-          studentPhone: dto.studentPhone,
-        },
-      },
-      update: { paid: dto.paid },
-      create: {
+  // Upsert payment record with new amountPaid field
+  return this.prisma.payment.upsert({
+    where: {
+      tripId_studentPhone: {
         tripId: dto.tripId,
         studentPhone: dto.studentPhone,
-        paid: dto.paid,
       },
-    });
-  }
+    },
+    update: { amountPaid: dto.amountPaid, note: dto.note },
+    create: {
+      tripId: dto.tripId,
+      studentPhone: dto.studentPhone,
+      amountPaid: dto.amountPaid,
+      note: dto.note,
+    },
+  });
+}
+
 }

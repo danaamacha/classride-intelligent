@@ -13,7 +13,7 @@ import { DestinationsModule } from './destinations/destinations.module';
 import { TripsModule } from './trips/trips.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { configValidationSchema } from './config/config.schema';
-
+import { PaymentsModule } from './payments/payments.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -30,6 +30,7 @@ import { configValidationSchema } from './config/config.schema';
     DestinationsModule,
     TripsModule,
     NotificationsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

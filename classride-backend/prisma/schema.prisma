@@ -107,7 +107,9 @@ model Owner {
   drivers      Driver[]
   students     Student[]
   destinations Destination[]
-
+  balances            StudentBalance[]
+  balanceTransactions BalanceTransaction[]
+  pricePerTrip Float @default(0) @map("price_per_trip")
   @@map("owners")
 }
 
@@ -156,7 +158,8 @@ tripAssignments   StudentAssignment[]
   weeklySchedules   StudentWeeklySchedule[]
   scheduleOverrides StudentScheduleOverride[]
   payments          Payment[]
-
+  balances            StudentBalance[]
+  balanceTransactions BalanceTransaction[]
   @@map("students")
 }
 
@@ -194,6 +197,8 @@ model Trip {
   destination Destination?        @relation(fields: [destinationId], references: [destinationId])
   assignments StudentAssignment[]
   payments    Payment[]
+  balanceTransactions BalanceTransaction[]
+  
 
   @@map("trips")
 }
@@ -209,12 +214,13 @@ model StudentAssignment {
   @@unique([tripId, studentPhone])
   @@map("students_assignment")
 }
-
 model Payment {
-  id           Int     @id @default(autoincrement())
-  tripId       Int     @map("trip_id")
-  studentPhone String  @map("student_phone")
-  paid         Boolean @default(false)
+  id           Int      @id @default(autoincrement())
+  tripId       Int      @map("trip_id")
+  studentPhone String   @map("student_phone")
+  amountPaid   Float    @default(0) @map("amount_paid")
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
 
   trip    Trip    @relation(fields: [tripId], references: [tripId])
   student Student @relation(fields: [studentPhone], references: [phoneNumber])
@@ -222,7 +228,35 @@ model Payment {
   @@unique([tripId, studentPhone])
   @@map("payments")
 }
+model StudentBalance {
+  id           Int      @id @default(autoincrement())
+  studentPhone String   @map("student_phone")
+  ownerPhone   String   @map("owner_phone")
+  balance      Float    @default(0)
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
+  owner   Owner   @relation(fields: [ownerPhone], references: [phoneNumber])
+
+  @@unique([studentPhone, ownerPhone])
+  @@map("student_balances")
+}
+model BalanceTransaction {
+  id           Int      @id @default(autoincrement())
+  studentPhone String   @map("student_phone")
+  ownerPhone   String   @map("owner_phone")
+  amount       Float
+  type         String   // PAYMENT / DEDUCTION / LATER
+  tripId       Int?     @map("trip_id")
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentPhone], references: [phoneNumber])
+  owner   Owner   @relation(fields: [ownerPhone], references: [phoneNumber])
+  trip    Trip?   @relation(fields: [tripId], references: [tripId])
+
+  @@map("balance_transactions")
+}
 model StudentWeeklySchedule {
   id                Int     @id @default(autoincrement())
   studentPhone      String  @map("student_phone")
