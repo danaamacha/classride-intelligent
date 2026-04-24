@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, UseGuards, Req, Param, Body } from '@nestjs/common';
 import { OwnersService } from './owners.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -20,5 +20,32 @@ export class OwnersController {
   @Get('dashboard')
   getDashboard(@Req() req: any) {
     return this.ownersService.getDashboard(req.user.phoneNumber);
+  }
+   @UseGuards(JwtGuard, RolesGuard)
+  @Roles('admin' as any)
+  @Get('admin/all')
+  getAllOwners() {
+    return this.ownersService.getAllOwners();
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('admin' as any)
+  @Get('admin/pending')
+  getPendingOwners() {
+    return this.ownersService.getPendingOwners();
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('admin' as any)
+  @Put('admin/:phone/approve')
+  approveOwner(@Param('phone') phone: string) {
+    return this.ownersService.approveOwner(phone);
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('admin' as any)
+  @Put('admin/:phone/reject')
+  rejectOwner(@Param('phone') phone: string) {
+    return this.ownersService.rejectOwner(phone);
   }
 }

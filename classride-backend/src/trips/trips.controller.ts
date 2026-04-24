@@ -25,7 +25,14 @@ export class TripsController {
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.tripsService.findOne(Number(id), req.user.phoneNumber);
   }
-
+@Put(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateTripDto>,
+    @Req() req: any,
+  ) {
+    return this.tripsService.update(Number(id), dto, req.user.phoneNumber);
+  }
   @Put(':id/status')
   updateStatus(
     @Param('id') id: string,

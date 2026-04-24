@@ -257,4 +257,103 @@ export class PaymentsService {
     });
     return { pricePerTrip: owner?.pricePerTrip ?? 0 };
   }
+  // ── Feature 4: Edit/delete a balance transaction ──
+  async editTransaction(
+    transactionId: number,
+    amount: number,
+    note: string,
+    driverPhone: string,
+  ) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { phoneNumber: driverPhone },
+    });
+    if (!driver) throw new NotFoundException('Driver not found');
+
+    const tx = await this.prisma.balanceTransaction.findUnique({
+      where: { id: transactionId },
+    });
+    if (!tx) throw new NotFoundException('Transaction not found');
+
+    // Calculate balance difference
+    const diff = amount - tx.amount;
+
+    // Update transaction
+    await this.prisma.balanceTransaction.update({
+      where: { id: transactionId },
+      data: { amount, note },
+    });
+
+    // Update running balance
+    await this.prisma.studentBalance.update({
+      where: {
+        studentPhone_ownerPhone: {
+          studentPhone: tx.studentPhone,
+          ownerPhone: tx.ownerPhone,
+        },
+      },
+      data: { balance: { increment: diff } },
+    });
+
+    const updated = await this.prisma.studentBalance.findUnique({
+      where: {
+        studentPhone_ownerPhone: {
+          studentPhone: tx.studentPhone,
+          ownerPhone: tx.ownerPhone,
+        },
+      },
+    });
+
+    return { message: 'Transaction updated', balance: updated?.balance ?? 0 };
+  }
+
+  async deleteTransaction(transactionId: number, driverPhone: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { phoneNumber: driverPhone },
+    });
+    if (!driver) throw new NotFoundException('Driver not found');
+
+    const tx = await this.prisma.balanceTransaction.findUnique({
+      where: { id: transactionId },
+    });
+    if (!tx) throw new NotFoundException('Transaction not found');
+
+    // Reverse the amount from balance
+    await this.prisma.studentBalance.update({
+      where: {
+        studentPhone_ownerPhone: {
+          studentPhone: tx.studentPhone,
+          ownerPhone: tx.ownerPhone,
+        },
+      },
+      data: { balance: { decrement: tx.amount } },
+    });
+
+    await this.prisma.balanceTransaction.delete({
+      where: { id: transactionId },
+    });
+
+    return { message: 'Transaction deleted' };
+  }
+  // ── Feature 5: Owner view all student balances ──
+  async getOwnerStudentBalances(ownerPhone: string) {
+    const balances = await this.prisma.studentBalance.findMany({
+      where: { ownerPhone },
+      include: {
+        student: {
+          include: {
+            user: { select: { fullName: true, phoneNumber: true } },
+            destination: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { balance: 'asc' }, // owes most first
+    });
+
+    return balances.map(b => ({
+      phoneNumber: b.studentPhone,
+      fullName: b.student.user.fullName,
+      destination: b.student.destination?.name,
+      balance: b.balance,
+    }));
+  }
 }

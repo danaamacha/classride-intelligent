@@ -86,4 +86,43 @@ export class OwnersService {
     },
   });
 }
+// ─── ADMIN ───────────────────────────────────
+
+  async getPendingOwners() {
+    return this.prisma.owner.findMany({
+      where: { status: 'pending' },
+      include: {
+        user: { select: { fullName: true, phoneNumber: true, createdAt: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async approveOwner(ownerPhone: string) {
+    await this.prisma.owner.update({
+      where: { phoneNumber: ownerPhone },
+      data: { status: 'accepted' },
+    });
+    return { message: 'Owner approved' };
+  }
+
+  async rejectOwner(ownerPhone: string) {
+    await this.prisma.owner.update({
+      where: { phoneNumber: ownerPhone },
+      data: { status: 'rejected' },
+    });
+    return { message: 'Owner rejected' };
+  }
+
+  async getAllOwners() {
+    return this.prisma.owner.findMany({
+      include: {
+        user: { select: { fullName: true, phoneNumber: true, createdAt: true } },
+        _count: {
+          select: { students: true, drivers: true, buses: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

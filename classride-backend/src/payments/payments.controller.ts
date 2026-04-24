@@ -1,5 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
-import { PaymentsService } from './payments.service';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';import { PaymentsService } from './payments.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,7 +15,12 @@ export class PaymentsController {
   getStudentsWithBalances(@Req() req: any) {
     return this.paymentsService.getStudentsWithBalances(req.user.phoneNumber);
   }
-
+@UseGuards(RolesGuard)
+  @Roles('owner' as any)
+  @Get('owner/balances')
+  getOwnerStudentBalances(@Req() req: any) {
+    return this.paymentsService.getOwnerStudentBalances(req.user.phoneNumber);
+  }
   @UseGuards(RolesGuard)
   @Roles('driver' as any)
   @Post('record')
@@ -77,6 +81,29 @@ export class PaymentsController {
     @Req() req: any,
   ) {
     return this.paymentsService.setPricePerTrip(req.user.phoneNumber, pricePerTrip);
+  }
+// ── Edit/delete transaction ──
+  @UseGuards(RolesGuard)
+  @Roles('driver' as any)
+  @Put('transaction/:id')
+  editTransaction(
+    @Param('id') id: string,
+    @Body() body: { amount: number; note?: string },
+    @Req() req: any,
+  ) {
+    return this.paymentsService.editTransaction(
+      parseInt(id),
+      body.amount,
+      body.note ?? '',
+      req.user.phoneNumber,
+    );
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('driver' as any)
+  @Delete('transaction/:id')
+  deleteTransaction(@Param('id') id: string, @Req() req: any) {
+    return this.paymentsService.deleteTransaction(parseInt(id), req.user.phoneNumber);
   }
 
   @UseGuards(RolesGuard)
