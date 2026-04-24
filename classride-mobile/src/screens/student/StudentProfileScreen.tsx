@@ -52,6 +52,12 @@ export default function StudentProfileScreen() {
   const [attendanceReturn, setAttendanceReturn] = useState(true);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
+  // Balance state
+  const [balance, setBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [txModalVisible, setTxModalVisible] = useState(false);
+
   useEffect(() => {
     fetchProfile();
     fetchSchedule();
@@ -59,9 +65,7 @@ export default function StudentProfileScreen() {
   }, []);
 
   // ─── Profile ───────────────────────────────────
-const [balance, setBalance] = useState<any>(null);
-const [loadingBalance, setLoadingBalance] = useState(true);
-const [balanceTxVisible, setBalanceTxVisible] = useState(false);
+
   const fetchProfile = async () => {
     try {
       const res = await api.get('/auth/me');
@@ -101,16 +105,23 @@ const [balanceTxVisible, setBalanceTxVisible] = useState(false);
       setLoadingSchedule(false);
     }
   };
-const fetchBalance = async () => {
-  try {
-    const res = await api.get('/payments/my/balance');
-    setBalance(res.data);
-  } catch (error) {
-    console.log('Error fetching balance:', error);
-  } finally {
-    setLoadingBalance(false);
-  }
-};
+
+  // ─── Balance ───────────────────────────────────
+
+  const fetchBalance = async () => {
+    try {
+      const res = await api.get('/payments/my/balance');
+      setBalance(res.data.balance ?? 0);
+      setTransactions(res.data.transactions ?? []);
+    } catch (error) {
+      console.log('Error fetching balance:', error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  // ─── Schedule handlers ─────────────────────────
+
   const handleEdit = (day: any) => {
     setEditingDay(day);
     setMorningTime(day.morningTime || '07:00');
@@ -173,6 +184,10 @@ const fetchBalance = async () => {
 
   const scheduledDays = schedule.map(s => s.dayOfWeek);
   const availableDays = ALL_DAYS.filter(d => !scheduledDays.includes(d.value));
+
+  const balanceColor = balance > 0 ? '#D97706' : balance < 0 ? '#DC2626' : '#059669';
+  const balanceBg = balance > 0 ? '#FEF3C7' : balance < 0 ? '#FEE2E2' : '#DCFCE7';
+  const balanceLabel = balance > 0 ? '🟡 You have credit' : balance < 0 ? '🔴 You owe money' : '✅ Settled';
 
   return (
     <KeyboardAvoidingView
@@ -237,54 +252,35 @@ const fetchBalance = async () => {
               </>
             )}
           </View>
-{/* ── Balance Card ── */}
-{user?.role === 'student' && (
-  <TouchableOpacity
-    style={styles.sectionCard}
-    onPress={() => setBalanceTxVisible(true)}
-  >
-    <Text style={styles.sectionTitle}>💰 My Balance</Text>
-    <Text style={styles.sectionSubtitle}>Tap to view transaction history</Text>
-    {loadingBalance ? (
-      <ActivityIndicator color="#059669" />
-    ) : (
-      <View style={[
-        styles.balanceDisplay,
-        {
-          backgroundColor:
-            (balance?.balance ?? 0) > 0 ? '#FEF3C7' :
-            (balance?.balance ?? 0) < 0 ? '#FEE2E2' : '#DCFCE7',
-        }
-      ]}>
-        <Text style={[
-          styles.balanceAmount,
-          {
-            color:
-              (balance?.balance ?? 0) > 0 ? '#D97706' :
-              (balance?.balance ?? 0) < 0 ? '#DC2626' : '#059669',
-          }
-        ]}>
-          {(balance?.balance ?? 0) >= 0 ? '+' : ''}
-          {(balance?.balance ?? 0).toLocaleString()} LBP
-        </Text>
-        <Text style={styles.balanceLabel}>
-          {(balance?.balance ?? 0) > 0
-            ? '🟡 You have credit'
-            : (balance?.balance ?? 0) < 0
-            ? '🔴 You owe money'
-            : '✅ Settled'}
-        </Text>
-      </View>
-    )}
-  </TouchableOpacity>
-)}
+
+          {/* ── Balance Card ── */}
+          {user?.role === 'student' && (
+            <TouchableOpacity
+              style={styles.sectionCard}
+              onPress={() => setTxModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sectionTitle}>💰 My Balance</Text>
+              <Text style={styles.sectionSubtitle}>Tap to view transaction history</Text>
+              {loadingBalance ? (
+                <ActivityIndicator color="#059669" style={{ marginVertical: 8 }} />
+              ) : (
+                <View style={[styles.balanceBox, { backgroundColor: balanceBg }]}>
+                  <Text style={[styles.balanceAmount, { color: balanceColor }]}>
+                    {balance >= 0 ? '+' : ''}{balance.toLocaleString()} LBP
+                  </Text>
+                  <Text style={styles.balanceStatus}>{balanceLabel}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
           {/* ── Weekly Schedule ── */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>🗓️ Weekly Schedule</Text>
             <Text style={styles.sectionSubtitle}>
               Your default pickup and return times
             </Text>
-
             {loadingSchedule ? (
               <ActivityIndicator color="#059669" style={{ marginVertical: 12 }} />
             ) : (
@@ -327,8 +323,6 @@ const fetchBalance = async () => {
                     </View>
                   ))
                 )}
-
-                {/* Add available days */}
                 {availableDays.length > 0 && (
                   <View style={styles.addDaysSection}>
                     <Text style={styles.addDaysTitle}>+ Add a Day</Text>
@@ -380,7 +374,6 @@ const fetchBalance = async () => {
                 <Text style={styles.modalTitle}>
                   {editingDay?.isNew ? '+ Add' : '✏️ Edit'} {DAY_NAMES[editingDay?.dayOfWeek]}
                 </Text>
-
                 <Text style={styles.label}>🌅 Morning Pickup Time</Text>
                 <TextInput
                   style={styles.input}
@@ -389,7 +382,6 @@ const fetchBalance = async () => {
                   onChangeText={setMorningTime}
                   returnKeyType="next"
                 />
-
                 <Text style={styles.label}>🌆 Return Time</Text>
                 <TextInput
                   style={styles.input}
@@ -399,7 +391,6 @@ const fetchBalance = async () => {
                   returnKeyType="done"
                   onSubmitEditing={Keyboard.dismiss}
                 />
-
                 <View style={styles.toggleSection}>
                   <View style={styles.toggleRow}>
                     <Text style={styles.toggleLabel}>🌅 Attending Morning by default</Text>
@@ -420,12 +411,8 @@ const fetchBalance = async () => {
                     />
                   </View>
                 </View>
-
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => setModalVisible(false)}
-                  >
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                     <Text style={styles.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -445,6 +432,61 @@ const fetchBalance = async () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── Transaction History Modal ── */}
+      <Modal
+        visible={txModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTxModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.txModalHeader}>
+              <Text style={styles.modalTitle}>💰 Transaction History</Text>
+              <TouchableOpacity onPress={() => setTxModalVisible(false)}>
+                <Text style={styles.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.balanceBox, { backgroundColor: balanceBg, marginBottom: 16 }]}>
+              <Text style={[styles.balanceAmount, { color: balanceColor }]}>
+                {balance >= 0 ? '+' : ''}{balance.toLocaleString()} LBP
+              </Text>
+              <Text style={styles.balanceStatus}>{balanceLabel}</Text>
+            </View>
+
+            <ScrollView style={{ maxHeight: 400 }}>
+              {transactions.length === 0 ? (
+                <Text style={styles.noTx}>No transactions yet</Text>
+              ) : (
+                transactions.map((tx: any, i: number) => (
+                  <View key={i} style={styles.txRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.txType}>
+                        {tx.type === 'PAYMENT' ? '💵 Payment received' : '🚌 Trip deduction'}
+                      </Text>
+                      {tx.trip && (
+                        <Text style={styles.txDetail}>
+                          {tx.trip.type === 'morning' ? '🌅' : '🌆'} {tx.trip.destination?.name} • {new Date(tx.trip.date).toLocaleDateString()}
+                        </Text>
+                      )}
+                      <Text style={styles.txDate}>
+                        {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                      {tx.note && <Text style={styles.txNote}>{tx.note}</Text>}
+                    </View>
+                    <Text style={[styles.txAmount, { color: tx.amount >= 0 ? '#059669' : '#DC2626' }]}>
+                      {tx.amount >= 0 ? '+' : ''}{tx.amount.toLocaleString()}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 }
@@ -459,8 +501,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
   content: { padding: 16 },
-
-  // Info card
   infoCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -478,8 +518,6 @@ const styles = StyleSheet.create({
   infoPhone: { fontSize: 14, color: '#64748B', marginTop: 4 },
   roleBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginTop: 10 },
   roleBadgeText: { fontWeight: '700', fontSize: 13 },
-
-  // Section cards
   sectionCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -493,8 +531,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 16 },
-
-  // Input
   input: {
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -506,8 +542,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   multilineInput: { height: 80, textAlignVertical: 'top' },
-
-  // Save address button
   saveBtn: {
     backgroundColor: '#059669',
     borderRadius: 10,
@@ -515,8 +549,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  // Schedule day rows
+  balanceBox: { borderRadius: 12, padding: 16, alignItems: 'center' },
+  balanceAmount: { fontSize: 22, fontWeight: 'bold' },
+  balanceStatus: { fontSize: 13, color: '#64748B', marginTop: 4 },
   emptySchedule: {
     paddingVertical: 16,
     alignItems: 'center',
@@ -546,8 +581,6 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 15 },
   deleteBtn: { padding: 8, backgroundColor: '#FEE2E2', borderRadius: 8 },
   deleteBtnText: { fontSize: 15 },
-
-  // Add days
   addDaysSection: { marginTop: 16 },
   addDaysTitle: { fontSize: 14, fontWeight: '600', color: '#059669', marginBottom: 10 },
   daysChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -560,8 +593,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
   },
   addDayChipText: { color: '#059669', fontWeight: '600', fontSize: 13 },
-
-  // Pending info
   pendingBox: {
     backgroundColor: '#FEF3C7',
     borderRadius: 12,
@@ -571,8 +602,6 @@ const styles = StyleSheet.create({
     borderColor: '#FDE68A',
   },
   pendingText: { color: '#92400E', fontSize: 13, lineHeight: 20 },
-
-  // Logout
   logoutBtn: {
     backgroundColor: '#FEE2E2',
     borderRadius: 12,
@@ -581,8 +610,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoutBtnText: { color: '#DC2626', fontWeight: '700', fontSize: 15 },
-
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -615,11 +642,25 @@ const styles = StyleSheet.create({
     flex: 1, padding: 14, borderRadius: 10, alignItems: 'center', backgroundColor: '#059669',
   },
   modalSaveBtnText: { color: '#fff', fontWeight: '700' },
-  balanceDisplay: {
-  borderRadius: 12,
-  padding: 16,
-  alignItems: 'center',
-},
-balanceAmount: { fontSize: 24, fontWeight: 'bold' },
-balanceLabel: { fontSize: 13, color: '#64748B', marginTop: 4 },
+  txModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  closeBtn: { fontSize: 18, color: '#64748B', padding: 4 },
+  noTx: { color: '#94A3B8', textAlign: 'center', padding: 24 },
+  txRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  txType: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  txDetail: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  txDate: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  txNote: { fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginTop: 2 },
+  txAmount: { fontSize: 15, fontWeight: '700', marginLeft: 8 },
 });

@@ -19,10 +19,10 @@ export default function DriverTabNavigator() {
           paddingTop: 8,
           height: 65,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+       tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
           if (route.name === 'Trips') iconName = focused ? 'bus' : 'bus-outline';
-          else iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
+          else iconName = focused ? 'wallet' : 'wallet-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -35,16 +35,7 @@ export default function DriverTabNavigator() {
     <Tab.Screen
   name="History"
   component={DriverPaymentsScreen}
-  options={{
-    tabBarLabel: 'Payments',
-    tabBarIcon: ({ focused, color, size }) => (
-      <Ionicons
-        name={focused ? 'wallet' : 'wallet-outline'}
-        size={size}
-        color={color}
-      />
-    ),
-  }}
+  options={{ tabBarLabel: 'Payments' }}
 />
     </Tab.Navigator>
   );

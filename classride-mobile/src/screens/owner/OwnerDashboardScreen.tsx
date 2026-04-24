@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -59,28 +61,28 @@ export default function OwnerDashboardScreen({ navigation }: any) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {/* Header */}
-    <View style={styles.header}>
-  <View>
-    <Text style={styles.greeting}>Good morning 👋</Text>
-    <Text style={styles.ownerName}>{user?.fullName}</Text>
-  </View>
-  <View style={styles.headerRight}>
-    <TouchableOpacity
-      style={styles.notifBtn}
-      onPress={() => navigation.getParent()?.navigate('Notifications')}
-    >
-      <Text style={styles.notifBtnText}>🔔</Text>
-      {unreadCount > 0 && (
-        <View style={styles.notifBadge}>
-          <Text style={styles.notifBadgeText}>{unreadCount}</Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Good morning 👋</Text>
+          <Text style={styles.ownerName}>{user?.fullName}</Text>
         </View>
-      )}
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-      <Text style={styles.logoutText}>Logout</Text>
-    </TouchableOpacity>
-  </View>
-</View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.getParent()?.navigate('Notifications')}
+          >
+            <Text style={styles.notifBtnText}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
@@ -120,17 +122,106 @@ export default function OwnerDashboardScreen({ navigation }: any) {
         )}
       </View>
 
-      
+      {/* Trip Price Settings */}
+      <PriceSettingCard />
+
     </ScrollView>
   );
 }
 
+// ─── Stat Card ───────────────────────────────
 function StatCard({ icon, label, value, color }: any) {
   return (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
       <Text style={styles.statIcon}>{icon}</Text>
       <Text style={[styles.statValue, { color }]}>{value ?? 0}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Price Setting Card ───────────────────────
+function PriceSettingCard() {
+  const [pricePerTrip, setPricePerTrip] = useState('');
+  const [currentPrice, setCurrentPrice] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchPrice();
+  }, []);
+
+  const fetchPrice = async () => {
+    try {
+      const res = await api.get('/payments/price');
+      setCurrentPrice(res.data.pricePerTrip ?? 0);
+      setPricePerTrip(String(res.data.pricePerTrip ?? ''));
+    } catch (error) {
+      console.log('Error fetching price:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const amount = parseFloat(pricePerTrip);
+    if (isNaN(amount) || amount < 0) {
+      Alert.alert('Error', 'Please enter a valid price');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put('/payments/price', { pricePerTrip: amount });
+      setCurrentPrice(amount);
+      Alert.alert('✅ Saved!', `Price per trip set to ${amount.toLocaleString()} LBP`);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={styles.priceCard}>
+      <Text style={styles.priceCardTitle}>💰 Trip Pricing</Text>
+      <Text style={styles.priceCardSubtitle}>
+        Set the price per trip for your students
+      </Text>
+      {loading ? (
+        <ActivityIndicator color="#2563EB" />
+      ) : (
+        <>
+          <View style={styles.currentPriceRow}>
+            <Text style={styles.currentPriceLabel}>Current price per trip:</Text>
+            <Text style={styles.currentPriceValue}>
+              {currentPrice.toLocaleString()} LBP
+            </Text>
+          </View>
+          <View style={styles.priceInputRow}>
+            <TextInput
+              style={styles.priceInput}
+              placeholder="e.g. 300000"
+              value={pricePerTrip}
+              onChangeText={setPricePerTrip}
+              keyboardType="numeric"
+            />
+            <TouchableOpacity
+              style={styles.priceSaveBtn}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.priceSaveBtnText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.priceHint}>
+            💡 Both trips = {(currentPrice * 2).toLocaleString()} LBP
+          </Text>
+        </>
+      )}
     </View>
   );
 }
@@ -148,6 +239,27 @@ const styles = StyleSheet.create({
   },
   greeting: { color: '#BFDBFE', fontSize: 14 },
   ownerName: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  logoutText: { color: '#fff', fontSize: 14 },
+  notifBtn: { position: 'relative', padding: 8 },
+  notifBtnText: { fontSize: 24 },
+  notifBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -188,15 +300,6 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   statusText: { fontSize: 12, fontWeight: '600' },
   tripInfo: { fontSize: 14, color: '#64748B', marginTop: 4 },
-  notifCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-  },
-  unreadNotif: { borderLeftWidth: 4, borderLeftColor: '#2563EB' },
-  notifTitle: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
-  notifBody: { fontSize: 14, color: '#64748B', marginTop: 4 },
   emptyCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -204,32 +307,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { color: '#94A3B8', fontSize: 14 },
-  notifBtn: {
-    position: 'relative',
-    padding: 8,
+  priceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    margin: 16,
+    marginTop: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  notifBtnText: { fontSize: 24 },
-  notifBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#DC2626',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+  priceCardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  priceCardSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 16 },
+  currentPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
   },
-  notifBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 8,
-},
-logoutBtn: {
-  backgroundColor: 'rgba(255,255,255,0.2)',
-  padding: 8,
-  borderRadius: 8,
-},
-logoutText: { color: '#fff', fontSize: 14 },
+  currentPriceLabel: { fontSize: 14, color: '#64748B' },
+  currentPriceValue: { fontSize: 16, fontWeight: '700', color: '#2563EB' },
+  priceInputRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  priceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    color: '#1E293B',
+    backgroundColor: '#F8FAFC',
+  },
+  priceSaveBtn: {
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priceSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  priceHint: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
 });
