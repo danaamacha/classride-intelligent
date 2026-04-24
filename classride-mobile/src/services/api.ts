@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { storage } from './storage';
 
-const BASE_URL = 'http://192.168.1.103:3001';
-const api = axios.create({
+const IS_PRODUCTION = true; // set to false for local development
+const BASE_URL = IS_PRODUCTION
+  ? 'https://classride-intelligent-production.up.railway.app'
+  : 'http://192.168.1.103:3001';const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
 });
