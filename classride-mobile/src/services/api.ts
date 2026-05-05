@@ -3,7 +3,7 @@ import { storage } from './storage';
 
 const IS_PRODUCTION = true; // set to false for local development
 const BASE_URL = IS_PRODUCTION
-  ? 'https://classride-intelligent-production.up.railway.app'
+? 'https://classride-intelligent.onrender.com'
   : 'http://192.168.1.103:3001';const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
