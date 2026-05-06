@@ -20,7 +20,10 @@ export class TripsController {
   findAll(@Req() req: any) {
     return this.tripsService.findAll(req.user.phoneNumber);
   }
-
+@Get(':id/suggested-students')
+  getSuggestedStudents(@Param('id') id: string, @Req() req: any) {
+    return this.tripsService.getSuggestedStudents(Number(id), req.user.phoneNumber);
+  }
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.tripsService.findOne(Number(id), req.user.phoneNumber);

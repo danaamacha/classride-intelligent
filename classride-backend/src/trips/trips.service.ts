@@ -227,4 +227,84 @@ export class TripsService {
 
     return { message: 'Student unassigned successfully' };
   }
+
+
+  async getSuggestedStudents(tripId: number, ownerPhone: string) {
+  const trip = await this.prisma.trip.findFirst({
+    where: { tripId, destination: { ownerPhone } },
+    include: { destination: true },
+  });
+
+  if (!trip) throw new NotFoundException('Trip not found');
+
+  // Get day of week from trip date (1=Mon, 2=Tue... 7=Sun)
+  const dayMap: { [key: number]: number } = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+  const tripDate = new Date(trip.date!);
+  const dayOfWeek = dayMap[tripDate.getDay()];
+
+  // Already assigned students
+  const assigned = await this.prisma.studentAssignment.findMany({
+    where: { tripId },
+    select: { studentPhone: true },
+  });
+  const assignedPhones = assigned.map(a => a.studentPhone);
+
+  // Get all students under this owner
+  const allStudents = await this.prisma.student.findMany({
+    where: { ownerPhone },
+    include: {
+      user: { select: { fullName: true, phoneNumber: true } },
+      destination: { select: { name: true } },
+      weeklySchedules: true,
+      balances: {
+        where: { ownerPhone },
+      },
+    },
+  });
+
+  // Split into suggested and others
+  const suggested: any[] = [];
+  const others: any[] = [];
+
+  for (const student of allStudents) {
+    // Skip already assigned
+    if (assignedPhones.includes(student.phoneNumber)) continue;
+
+    const schedule = student.weeklySchedules.find(
+      s => s.dayOfWeek === dayOfWeek
+    );
+
+    const studentData = {
+      phoneNumber: student.phoneNumber,
+      fullName: student.user.fullName,
+      homeAddress: student.homeAddress,
+      destination: student.destination?.name,
+      balance: student.balances[0]?.balance ?? 0,
+      schedule: schedule ?? null,
+    };
+
+    if (schedule) {
+      // Check if time matches
+      const timeMatches = trip.type === 'morning'
+        ? schedule.morningTime === trip.pickupTime
+        : schedule.returnTime === trip.pickupTime;
+
+      const attendanceOk = trip.type === 'morning'
+        ? schedule.attendanceMorning
+        : schedule.attendanceReturn;
+
+      if (timeMatches && attendanceOk) {
+        suggested.push({ ...studentData, matchReason: 'Schedule matches perfectly ✅' });
+      } else if (attendanceOk) {
+        suggested.push({ ...studentData, matchReason: 'Attends this day 📅' });
+      } else {
+        others.push({ ...studentData, matchReason: 'Marked absent this day ❌' });
+      }
+    } else {
+      others.push({ ...studentData, matchReason: 'No schedule for this day' });
+    }
+  }
+
+  return { suggested, others, assignedPhones };
+}
 }

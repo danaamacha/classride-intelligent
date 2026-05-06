@@ -8,16 +8,16 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  TextInput,
   Modal,
+  TextInput,
   KeyboardAvoidingView,
-Platform,
-TouchableWithoutFeedback,
-Keyboard,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import api from '../../services/api';
 
-export default function OwnerTripsScreen() {
+export default function OwnerTripsScreen({ navigation }: any) {
   const [trips, setTrips] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -64,7 +64,6 @@ export default function OwnerTripsScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     setSaving(true);
     try {
       await api.post('/trips', {
@@ -76,6 +75,12 @@ export default function OwnerTripsScreen() {
         date,
       });
       setModalVisible(false);
+      setSelectedBus('');
+      setSelectedDriver('');
+      setSelectedDestination('');
+      setPickupTime('');
+      setDate('');
+      setTripType('morning');
       fetchData();
       Alert.alert('✅ Trip Created!');
     } catch (error: any) {
@@ -145,7 +150,12 @@ export default function OwnerTripsScreen() {
           trips.map((trip: any) => {
             const colors = getStatusColor(trip.status);
             return (
-              <View key={trip.tripId} style={styles.tripCard}>
+              <TouchableOpacity
+                key={trip.tripId}
+                style={styles.tripCard}
+                onPress={() => navigation.getParent()?.navigate('TripDetail', { tripId: trip.tripId })}
+                activeOpacity={0.8}
+              >
                 <View style={styles.tripHeader}>
                   <Text style={styles.tripDestination}>
                     📍 {trip.destination?.name}
@@ -165,153 +175,158 @@ export default function OwnerTripsScreen() {
                 <Text style={styles.tripInfo}>
                   {trip.type === 'morning' ? '🌅 Morning' : '🌆 Return'}
                 </Text>
-                {trip.status === 'scheduled' && (
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDeleteTrip(trip.tripId)}
-                  >
-                    <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                <View style={styles.tripFooter}>
+                  <Text style={styles.tapHint}>Tap to view details & assign students →</Text>
+                  {trip.status === 'scheduled' && (
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTrip(trip.tripId);
+                      }}
+                    >
+                      <Text style={styles.deleteBtnText}>🗑️</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
             );
           })
         )}
       </ScrollView>
 
       {/* Create Trip Modal */}
-     <Modal
-  visible={modalVisible}
-  transparent
-  animationType="slide"
-  onRequestClose={() => setModalVisible(false)}
->
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={styles.modalOverlay}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create New Trip</Text>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <ScrollView>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Create New Trip</Text>
 
-            {/* Bus Selection */}
-            <Text style={styles.label}>Select Bus</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {buses.map((bus: any) => (
-                <TouchableOpacity
-                  key={bus.busId}
-                  style={[styles.chip, selectedBus === String(bus.busId) && styles.chipActive]}
-                  onPress={() => setSelectedBus(String(bus.busId))}
-                >
-                  <Text style={[styles.chipText, selectedBus === String(bus.busId) && styles.chipTextActive]}>
-                    🚌 {bus.busName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {/* Bus Selection */}
+                  <Text style={styles.label}>Select Bus</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                    {buses.map((bus: any) => (
+                      <TouchableOpacity
+                        key={bus.busId}
+                        style={[styles.chip, selectedBus === String(bus.busId) && styles.chipActive]}
+                        onPress={() => setSelectedBus(String(bus.busId))}
+                      >
+                        <Text style={[styles.chipText, selectedBus === String(bus.busId) && styles.chipTextActive]}>
+                          🚌 {bus.busName}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
-            {/* Driver Selection */}
-            <Text style={styles.label}>Select Driver</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {drivers.map((d: any) => (
-                <TouchableOpacity
-                  key={d.phoneNumber}
-                  style={[styles.chip, selectedDriver === d.phoneNumber && styles.chipActive]}
-                  onPress={() => setSelectedDriver(d.phoneNumber)}
-                >
-                  <Text style={[styles.chipText, selectedDriver === d.phoneNumber && styles.chipTextActive]}>
-                    👨‍✈️ {d.user?.fullName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {/* Driver Selection */}
+                  <Text style={styles.label}>Select Driver</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                    {drivers.map((d: any) => (
+                      <TouchableOpacity
+                        key={d.phoneNumber}
+                        style={[styles.chip, selectedDriver === d.phoneNumber && styles.chipActive]}
+                        onPress={() => setSelectedDriver(d.phoneNumber)}
+                      >
+                        <Text style={[styles.chipText, selectedDriver === d.phoneNumber && styles.chipTextActive]}>
+                          👨‍✈️ {d.user?.fullName}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
-            {/* Destination Selection */}
-            <Text style={styles.label}>Select Destination</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {destinations.map((dest: any) => (
-                <TouchableOpacity
-                  key={dest.destinationId}
-                  style={[styles.chip, selectedDestination === String(dest.destinationId) && styles.chipActive]}
-                  onPress={() => setSelectedDestination(String(dest.destinationId))}
-                >
-                  <Text style={[styles.chipText, selectedDestination === String(dest.destinationId) && styles.chipTextActive]}>
-                    📍 {dest.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {/* Destination Selection */}
+                  <Text style={styles.label}>Select Destination</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                    {destinations.map((dest: any) => (
+                      <TouchableOpacity
+                        key={dest.destinationId}
+                        style={[styles.chip, selectedDestination === String(dest.destinationId) && styles.chipActive]}
+                        onPress={() => setSelectedDestination(String(dest.destinationId))}
+                      >
+                        <Text style={[styles.chipText, selectedDestination === String(dest.destinationId) && styles.chipTextActive]}>
+                          📍 {dest.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
-            {/* Trip Type */}
-            <Text style={styles.label}>Trip Type</Text>
-            <View style={styles.typeRow}>
-              <TouchableOpacity
-                style={[styles.typeBtn, tripType === 'morning' && styles.typeBtnActive]}
-                onPress={() => setTripType('morning')}
-              >
-                <Text style={[styles.typeBtnText, tripType === 'morning' && styles.typeBtnTextActive]}>
-                  🌅 Morning
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeBtn, tripType === 'return' && styles.typeBtnActive]}
-                onPress={() => setTripType('return')}
-              >
-                <Text style={[styles.typeBtnText, tripType === 'return' && styles.typeBtnTextActive]}>
-                  🌆 Return
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  {/* Trip Type */}
+                  <Text style={styles.label}>Trip Type</Text>
+                  <View style={styles.typeRow}>
+                    <TouchableOpacity
+                      style={[styles.typeBtn, tripType === 'morning' && styles.typeBtnActive]}
+                      onPress={() => setTripType('morning')}
+                    >
+                      <Text style={[styles.typeBtnText, tripType === 'morning' && styles.typeBtnTextActive]}>
+                        🌅 Morning
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.typeBtn, tripType === 'return' && styles.typeBtnActive]}
+                      onPress={() => setTripType('return')}
+                    >
+                      <Text style={[styles.typeBtnText, tripType === 'return' && styles.typeBtnTextActive]}>
+                        🌆 Return
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
-            {/* Date */}
-            <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 2026-04-15"
-              value={date}
-              onChangeText={setDate}
-              returnKeyType="next"
-              onSubmitEditing={Keyboard.dismiss}
-            />
+                  {/* Date */}
+                  <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 2026-05-07"
+                    value={date}
+                    onChangeText={setDate}
+                    returnKeyType="next"
+                  />
 
-            {/* Pickup Time */}
-            <Text style={styles.label}>Pickup Time (HH:MM)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 07:00"
-              value={pickupTime}
-              onChangeText={setPickupTime}
-              returnKeyType="done"
-              onSubmitEditing={Keyboard.dismiss}
-            />
+                  {/* Pickup Time */}
+                  <Text style={styles.label}>Pickup Time (HH:MM)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 07:00"
+                    value={pickupTime}
+                    onChangeText={setPickupTime}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
+                  />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setModalVisible(false);
-                }}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleCreateTrip}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Create Trip</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={handleCreateTrip}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.saveBtnText}>Create Trip</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
-  </TouchableWithoutFeedback>
-</Modal>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -357,14 +372,19 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   statusText: { fontSize: 12, fontWeight: '600' },
   tripInfo: { fontSize: 14, color: '#64748B', marginTop: 4 },
-  deleteBtn: {
+  tripFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 12,
-    padding: 8,
+  },
+  tapHint: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
+  deleteBtn: {
+    padding: 6,
     backgroundColor: '#FEE2E2',
     borderRadius: 8,
-    alignItems: 'center',
   },
-  deleteBtnText: { color: '#DC2626', fontWeight: '600' },
+  deleteBtnText: { fontSize: 16 },
   emptyCard: {
     backgroundColor: '#fff',
     borderRadius: 12,

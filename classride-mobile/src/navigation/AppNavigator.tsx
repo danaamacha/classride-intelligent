@@ -13,6 +13,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import StudentJoinRequestScreen from '../screens/student/StudentJoinRequestScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import StudentProfileScreen from '../screens/student/StudentProfileScreen';
+import OwnerTripDetailScreen from '../screens/owner/OwnerTripDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,10 +36,11 @@ export default function AppNavigator() {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
-        ) : user.role === 'owner' ? (
+       ) : user.role === 'owner' ? (
           <>
             <Stack.Screen name="OwnerDashboard" component={OwnerTabNavigator} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="TripDetail" component={OwnerTripDetailScreen} />
           </>
         ) : user.role === 'driver' ? (
           <>
