@@ -109,7 +109,8 @@ model Owner {
   destinations Destination[]
   balances            StudentBalance[]
   balanceTransactions BalanceTransaction[]
-  pricePerTrip Float @default(0) @map("price_per_trip")
+priceSingleTrip Float @default(300000) @map("price_single_trip")
+priceDoubleTrip Float @default(500000) @map("price_double_trip")
   @@map("owners")
 }
 

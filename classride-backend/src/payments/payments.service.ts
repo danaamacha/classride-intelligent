@@ -52,7 +52,8 @@ export class PaymentsService {
     const owner = await this.prisma.owner.findUnique({
       where: { phoneNumber: driver.ownerPhone },
     });
-    const pricePerTrip = owner?.pricePerTrip ?? 0;
+    const pricePerTrip = owner?.priceSingleTrip ?? 300000;
+    const priceDoubleTrip = owner?.priceDoubleTrip ?? 500000; 
     const ownerPhone = driver.ownerPhone;
 
     // 1 — Record payment in payments table
@@ -111,8 +112,8 @@ export class PaymentsService {
     });
 
     // If 500 paid → also cover return trip of same day
-    if (amountPaid >= (pricePerTrip * 2) - 50000) {
-      // Find return trip same day same student
+if (amountPaid >= priceDoubleTrip) {
+        // Find return trip same day same student
       const trip = await this.prisma.trip.findUnique({
         where: { tripId },
         select: { date: true, destinationId: true },
@@ -241,22 +242,25 @@ export class PaymentsService {
   }
 
   // ─── Owner sets price per trip ───
-  async setPricePerTrip(ownerPhone: string, pricePerTrip: number) {
-    await this.prisma.owner.update({
-      where: { phoneNumber: ownerPhone },
-      data: { pricePerTrip },
-    });
-    return { message: 'Price updated', pricePerTrip };
-  }
+  
+  async setPrices(ownerPhone: string, priceSingleTrip: number, priceDoubleTrip: number) {
+  await this.prisma.owner.update({
+    where: { phoneNumber: ownerPhone },
+    data: { priceSingleTrip, priceDoubleTrip },
+  });
+  return { message: 'Prices updated', priceSingleTrip, priceDoubleTrip };
+}
 
-  // ─── Get price per trip ───
-  async getPricePerTrip(ownerPhone: string) {
-    const owner = await this.prisma.owner.findUnique({
-      where: { phoneNumber: ownerPhone },
-      select: { pricePerTrip: true },
-    });
-    return { pricePerTrip: owner?.pricePerTrip ?? 0 };
-  }
+async getPrices(ownerPhone: string) {
+  const owner = await this.prisma.owner.findUnique({
+    where: { phoneNumber: ownerPhone },
+    select: { priceSingleTrip: true, priceDoubleTrip: true },
+  });
+  return {
+    priceSingleTrip: owner?.priceSingleTrip ?? 300000,
+    priceDoubleTrip: owner?.priceDoubleTrip ?? 500000,
+  };
+}
   // ── Feature 4: Edit/delete a balance transaction ──
   async editTransaction(
     transactionId: number,

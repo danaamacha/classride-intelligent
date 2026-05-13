@@ -73,14 +73,23 @@ export class PaymentsController {
   }
 
   // ─── Owner routes ───
-  @UseGuards(RolesGuard)
+@UseGuards(RolesGuard)
   @Roles('owner' as any)
   @Put('price')
-  setPricePerTrip(
-    @Body('pricePerTrip') pricePerTrip: number,
+  setPrices(
+    @Body() body: { priceSingleTrip: number; priceDoubleTrip: number },
     @Req() req: any,
   ) {
-    return this.paymentsService.setPricePerTrip(req.user.phoneNumber, pricePerTrip);
+    return this.paymentsService.setPrices(
+      req.user.phoneNumber,
+      body.priceSingleTrip,
+      body.priceDoubleTrip,
+    );
+  }
+
+  @Get('price')
+  getPrices(@Req() req: any) {
+    return this.paymentsService.getPrices(req.user.phoneNumber);
   }
 // ── Edit/delete transaction ──
   @UseGuards(RolesGuard)
@@ -106,10 +115,4 @@ export class PaymentsController {
     return this.paymentsService.deleteTransaction(parseInt(id), req.user.phoneNumber);
   }
 
-  @UseGuards(RolesGuard)
-  @Roles('owner' as any)
-  @Get('price')
-  getPricePerTrip(@Req() req: any) {
-    return this.paymentsService.getPricePerTrip(req.user.phoneNumber);
-  }
-}
+ }
