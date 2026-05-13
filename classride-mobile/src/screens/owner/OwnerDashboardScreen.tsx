@@ -141,39 +141,53 @@ function StatCard({ icon, label, value, color }: any) {
 }
 
 // ─── Price Setting Card ───────────────────────
+// ─── Price Setting Card ───────────────────────
 function PriceSettingCard() {
-  const [pricePerTrip, setPricePerTrip] = useState('');
-  const [currentPrice, setCurrentPrice] = useState(0);
+  const [priceSingle, setPriceSingle] = useState('');
+  const [priceDouble, setPriceDouble] = useState('');
+  const [currentSingle, setCurrentSingle] = useState(0);
+  const [currentDouble, setCurrentDouble] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchPrice();
+    fetchPrices();
   }, []);
 
-  const fetchPrice = async () => {
+  const fetchPrices = async () => {
     try {
       const res = await api.get('/payments/price');
-      setCurrentPrice(res.data.pricePerTrip ?? 0);
-      setPricePerTrip(String(res.data.pricePerTrip ?? ''));
+      setCurrentSingle(res.data.priceSingleTrip ?? 300000);
+      setCurrentDouble(res.data.priceDoubleTrip ?? 500000);
+      setPriceSingle(String(res.data.priceSingleTrip ?? 300000));
+      setPriceDouble(String(res.data.priceDoubleTrip ?? 500000));
     } catch (error) {
-      console.log('Error fetching price:', error);
+      console.log('Error fetching prices:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    const amount = parseFloat(pricePerTrip);
-    if (isNaN(amount) || amount < 0) {
-      Alert.alert('Error', 'Please enter a valid price');
+    const single = parseFloat(priceSingle);
+    const double = parseFloat(priceDouble);
+    if (isNaN(single) || isNaN(double) || single <= 0 || double <= 0) {
+      Alert.alert('Error', 'Please enter valid prices');
+      return;
+    }
+    if (double <= single) {
+      Alert.alert('Error', 'Both trips price must be higher than single trip price');
       return;
     }
     setSaving(true);
     try {
-      await api.put('/payments/price', { pricePerTrip: amount });
-      setCurrentPrice(amount);
-      Alert.alert('✅ Saved!', `Price per trip set to ${amount.toLocaleString()} LBP`);
+      await api.put('/payments/price', {
+        priceSingleTrip: single,
+        priceDoubleTrip: double,
+      });
+      setCurrentSingle(single);
+      setCurrentDouble(double);
+      Alert.alert('✅ Saved!', `1 trip: ${single.toLocaleString()} LBP\nBoth trips: ${double.toLocaleString()} LBP`);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to save');
     } finally {
@@ -185,24 +199,41 @@ function PriceSettingCard() {
     <View style={styles.priceCard}>
       <Text style={styles.priceCardTitle}>💰 Trip Pricing</Text>
       <Text style={styles.priceCardSubtitle}>
-        Set the price per trip for your students
+        Set the prices students pay for trips
       </Text>
       {loading ? (
         <ActivityIndicator color="#2563EB" />
       ) : (
         <>
           <View style={styles.currentPriceRow}>
-            <Text style={styles.currentPriceLabel}>Current price per trip:</Text>
+            <Text style={styles.currentPriceLabel}>1 trip (morning or return):</Text>
             <Text style={styles.currentPriceValue}>
-              {currentPrice.toLocaleString()} LBP
+              {currentSingle.toLocaleString()} LBP
             </Text>
           </View>
+          <View style={styles.currentPriceRow}>
+            <Text style={styles.currentPriceLabel}>Both trips (same day):</Text>
+            <Text style={styles.currentPriceValue}>
+              {currentDouble.toLocaleString()} LBP
+            </Text>
+          </View>
+
+          <Text style={styles.label}>1 Trip Price (LBP)</Text>
+          <TextInput
+            style={styles.priceInput}
+            placeholder="e.g. 300000"
+            value={priceSingle}
+            onChangeText={setPriceSingle}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.label}>Both Trips Price (LBP)</Text>
           <View style={styles.priceInputRow}>
             <TextInput
               style={styles.priceInput}
-              placeholder="e.g. 300000"
-              value={pricePerTrip}
-              onChangeText={setPricePerTrip}
+              placeholder="e.g. 500000"
+              value={priceDouble}
+              onChangeText={setPriceDouble}
               keyboardType="numeric"
             />
             <TouchableOpacity
@@ -217,9 +248,6 @@ function PriceSettingCard() {
               )}
             </TouchableOpacity>
           </View>
-          <Text style={styles.priceHint}>
-            💡 Both trips = {(currentPrice * 2).toLocaleString()} LBP
-          </Text>
         </>
       )}
     </View>
@@ -352,4 +380,5 @@ const styles = StyleSheet.create({
   },
   priceSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   priceHint: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 8 },
 });
